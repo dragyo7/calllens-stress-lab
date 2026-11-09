@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Runtime/cache/data (keep outside repo where possible)
+.cache/
+data/
+calllens-data/
+*.wav
+*.mp3
+*.tar.gz
+*.db
+*.sqlite
+*.sqlite3
+
+
+# Generated local artifacts
+*.log
+.DS_Store
+Thumbs.db
