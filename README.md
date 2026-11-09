@@ -3,7 +3,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Tests: 98 Passing](https://img.shields.io/badge/tests-98%20passed-brightgreen.svg)]()
+[![Tests: 99 Passing](https://img.shields.io/badge/tests-99%20passed-brightgreen.svg)]()
 [![Safety Cap: Enforced](https://img.shields.io/badge/safety--cap-enforced-orange.svg)]()
 [![Provenance: Isolated](https://img.shields.io/badge/provenance-isolated-blueviolet.svg)]()
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
@@ -58,7 +58,7 @@ flowchart TD
     subgraph API_Layer ["Backend Gateway (FastAPI)"]
         Server["FastAPI REST API\n(app/main.py)"]
         RateLimit["Endpoint Rate Limiter\n(10 req/min/IP)"]
-        Validator["WAV File Validator\n(Magic Bytes, 16kHz, Mono, &le;10MB)"]
+        Validator["WAV File Validator\n(Magic Bytes, 16kHz, Mono, <= 10MB)"]
     end
 
     subgraph Gateway_Layer ["Centralized Provider Gateway"]
@@ -73,7 +73,7 @@ flowchart TD
         RawAudio["Input Audio (16 kHz WAV)"]
         BP["300-3400 Hz Bandpass\n(8th-Order Butterworth)"]
         Resample8k["Downsample to 8 kHz"]
-        MuLaw["G.711 \u03bc-Law Companding\n(8-bit Quantization)"]
+        MuLaw["G.711 mu-Law Companding\n(8-bit Quantization)"]
         NoiseInject["Calibrated Gaussian Noise\n(SNR 10dB / SNR 0dB)"]
         Reconstruct["Resample to 16 kHz"]
     end
@@ -304,14 +304,14 @@ APP_PORT=8000
 ```
 > **Security Notice:** `.env` is strictly ignored by Git (`git check-ignore .env`). Never commit API keys or secret credentials.
 
-### 3. Run the Verification Suite (98 Tests)
+### 3. Run the Verification Suite (99 Tests)
 Verify the entire codebase, audio pipeline, client gateway, and security assertions offline without making any live API calls:
 ```bash
 pytest -q
 ```
 Expected output:
 ```text
-98 passed in 7.33s
+99 passed in 6.82s
 ```
 
 ### 4. Launch the Interactive Stress Lab

@@ -95,19 +95,28 @@ class CallAccounting:
 
     def can_make_live_call(self) -> bool:
         with self._lock:
-            return self.live_calls < self.max_live_calls
+            return self.network_attempts < self.max_live_calls
 
     def check_and_reserve_live_call(self) -> None:
         with self._lock:
-            if self.live_calls >= self.max_live_calls:
+            if self.network_attempts >= self.max_live_calls:
                 raise CallLimitExceededError(
-                    f"Live call cap reached: {self.live_calls}/{self.max_live_calls}. "
+                    f"Live network attempt cap reached: {self.network_attempts}/{self.max_live_calls}. "
                     f"Set MAX_LIVE_CALLS to increase budget."
                 )
 
-    def record_network_attempt(self) -> None:
+    def check_and_reserve_network_attempt(self) -> None:
         with self._lock:
+            if self.network_attempts >= self.max_live_calls:
+                raise CallLimitExceededError(
+                    f"Live network attempt cap reached: {self.network_attempts}/{self.max_live_calls}. "
+                    f"Set MAX_LIVE_CALLS to increase budget."
+                )
             self.network_attempts += 1
+
+    def record_network_attempt(self) -> None:
+        # Kept for backward compatibility if called directly
+        pass
 
     def record_retry(self) -> None:
         with self._lock:
@@ -337,7 +346,7 @@ def call(
     with _semaphore:
         last_error: Exception | None = None
         for attempt in range(1, MAX_RETRIES + 1):
-            accounting.record_network_attempt()
+            accounting.check_and_reserve_network_attempt()
             try:
                 start_time = time.perf_counter()
                 if kind == "stt":

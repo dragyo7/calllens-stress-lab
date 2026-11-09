@@ -126,6 +126,28 @@ def test_bounded_retry_behavior(sample_wav):
         assert mock_sleep.call_count == 2
 
 
+def test_retries_respect_and_cannot_bypass_cap(sample_wav):
+    """Prove that retries count against the global network-attempt cap and are blocked when cap is hit."""
+    # Cap set to 2 attempts only
+    accounting.reset(new_max_live_calls=2)
+    payload = {"audio": sample_wav, "model": None, "format": "verbatim"}
+
+    with patch("gnani.stt.client.GnaniSTTClient.transcribe") as mock_transcribe, \
+         patch("time.sleep"):
+        mock_transcribe.side_effect = RuntimeError("503 Service Unavailable")
+
+        # Attempt 1: Network attempt 1 -> 503
+        # Attempt 2: Network attempt 2 -> 503
+        # Attempt 3: Cap is 2 -> CallLimitExceededError raised before dispatch
+        with pytest.raises(CallLimitExceededError) as exc_info:
+            gnani_client.call("stt", payload, live=True, use_cache=False)
+
+        assert "Live network attempt cap reached: 2/2" in str(exc_info.value)
+        assert accounting.network_attempts == 2
+        assert mock_transcribe.call_count == 2
+        assert accounting.live_calls == 0
+
+
 def test_secrets_redacted_in_logs():
     """Verify that secret keys never appear in log records."""
     log_filter = RedactingFilter()

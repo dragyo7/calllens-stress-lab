@@ -17,9 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const qAuto = urlParams.get('auto') === '1';
   const qError = urlParams.get('error');
 
-  function showError(msg) {
+  function showError(msg, isNotice = false) {
     if (errorBanner) {
       errorBanner.textContent = msg;
+      if (isNotice || msg.toLowerCase().includes('no live results')) {
+        errorBanner.className = 'notice-banner';
+      } else {
+        errorBanner.className = 'error-banner';
+      }
       errorBanner.classList.remove('hidden');
     } else {
       alert(msg);
