@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CallLens Stress Lab — Speech Recognition Benchmarking</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="header-content">
+        <h1>CallLens Stress Lab</h1>
+        <p class="subtitle">Benchmarking Hindi ASR Telephony Robustness: <strong>Gnani Prisma v2.5</strong> vs <strong>Prisma v3.0</strong></p>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-outline" id="mode-badge">MOCK MODE (DEFAULT)</span>
+        <span class="badge badge-primary">Hindi India (hi-IN)</span>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Controls Panel -->
+      <section class="card controls-card">
+        <h2>1. Configure Audio & Degradation Condition</h2>
+        <form id="stress-form">
+          <div class="form-group">
+            <label for="clip-select">Select Test Clip:</label>
+            <select id="clip-select" name="clip_id" class="form-control">
+              <option value="">-- Choose a pre-loaded test clip --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Or Upload Custom Audio (Max 5 MB, &le; 30 sec):</label>
+            <input type="file" id="audio-file" name="audio_file" accept=".wav,.mp3,.ogg,.flac" class="form-control-file">
+          </div>
+
+          <div class="form-group">
+            <label>Telephony Acoustic Condition:</label>
+            <div class="condition-grid">
+              <label class="radio-label">
+                <input type="radio" name="condition" value="clean" checked>
+                <div class="radio-card">
+                  <strong>Clean</strong>
+                  <span>Original 16 kHz Audio</span>
+                </div>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="condition" value="tel">
+                <div class="radio-card">
+                  <strong>Telephony (tel)</strong>
+                  <span>300–3400 Hz, 8kHz &mu;-law</span>
+                </div>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="condition" value="tel_snr10">
+                <div class="radio-card">
+                  <strong>Tel + 10 dB SNR</strong>
+                  <span>Moderate Gaussian Noise</span>
+                </div>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="condition" value="tel_snr0">
+                <div class="radio-card">
+                  <strong>Tel + 0 dB SNR</strong>
+                  <span>Severe Telephony Noise</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="btn-submit" class="btn btn-primary">Run Stress Evaluation</button>
+            <span id="loader" class="loader hidden">Evaluating audio...</span>
+          </div>
+        </form>
+      </section>
+
+      <!-- Reference Transcript -->
+      <section id="reference-card" class="card reference-card hidden">
+        <h3>Ground Truth Reference Transcript</h3>
+        <p id="ref-text" class="transcript-box"></p>
+        <div id="gt-entities" class="gt-entities hidden">
+          <strong>Ground Truth Entities:</strong>
+          <span id="gt-amt-tag" class="tag"></span>
+          <span id="gt-day-tag" class="tag"></span>
+        </div>
+      </section>
+
+      <!-- Comparison Section -->
+      <section id="results-section" class="results-grid hidden">
+        <!-- Prisma v2.5 Card -->
+        <div class="card result-card">
+          <div class="card-header">
+            <h3>Prisma v2.5 (Baseline)</h3>
+            <span class="badge" id="v25-cache-badge">Cached</span>
+          </div>
+          <div class="metrics-row">
+            <div class="metric">
+              <span class="metric-label">WER</span>
+              <span class="metric-value" id="v25-wer">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">CER</span>
+              <span class="metric-value" id="v25-cer">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Latency</span>
+              <span class="metric-value" id="v25-lat">-</span>
+            </div>
+          </div>
+          <h4>ASR Transcript:</h4>
+          <p id="v25-transcript" class="transcript-box"></p>
+          <div id="v25-entities" class="entity-section">
+            <h4>Extracted BFSI Entities:</h4>
+            <ul>
+              <li>Amount: <strong id="v25-amt">-</strong> <span id="v25-amt-status"></span></li>
+              <li>Due Day: <strong id="v25-day">-</strong> <span id="v25-day-status"></span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Prisma v3.0 Card -->
+        <div class="card result-card highlight-card">
+          <div class="card-header">
+            <h3>Prisma v3.0 (Multilingual)</h3>
+            <span class="badge" id="v30-cache-badge">Cached</span>
+          </div>
+          <div class="metrics-row">
+            <div class="metric">
+              <span class="metric-label">WER</span>
+              <span class="metric-value" id="v30-wer">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">CER</span>
+              <span class="metric-value" id="v30-cer">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Latency</span>
+              <span class="metric-value" id="v30-lat">-</span>
+            </div>
+          </div>
+          <h4>ASR Transcript:</h4>
+          <p id="v30-transcript" class="transcript-box"></p>
+          <div id="v30-entities" class="entity-section">
+            <h4>Extracted BFSI Entities:</h4>
+            <ul>
+              <li>Amount: <strong id="v30-amt">-</strong> <span id="v30-amt-status"></span></li>
+              <li>Due Day: <strong id="v30-day">-</strong> <span id="v30-day-status"></span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>CallLens Stress Lab &bull; Reproducible ASR Evaluation for <em>The Great Indian Internship Challenge</em> &bull; Powered by Gnani Prisma &bull; FLEURS CC BY 4.0</p>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
