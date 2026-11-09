@@ -70,9 +70,9 @@ def run_probe(live: bool = False) -> None:
         label2 = "probe_clip_2 (880Hz 2.5s)"
 
     calls = [
-        {"name": f"Probe 1: {label1}", "clip": clip1, "model": None, "label": "Prisma v2.5", "format": "verbatim"},
+        {"name": f"Probe 1: {label1}", "clip": clip1, "model": None, "label": "Prisma v2.5 (default/None)", "format": "verbatim"},
         {"name": f"Probe 2: {label1}", "clip": clip1, "model": "prisma-v3.0", "label": "Prisma v3.0", "format": "verbatim"},
-        {"name": f"Probe 3: {label2}", "clip": clip2, "model": None, "label": "Prisma v2.5", "format": "verbatim"},
+        {"name": f"Probe 3: {label2}", "clip": clip2, "model": "prisma-v2.5", "label": "Prisma v2.5 (explicit)", "format": "verbatim"},
         {"name": f"Probe 4: {label2}", "clip": clip2, "model": "prisma-v3.0", "label": "Prisma v3.0", "format": "verbatim"},
     ]
 
@@ -81,11 +81,12 @@ def run_probe(live: bool = False) -> None:
     print(f"Mode: {'LIVE NETWORK' if live else 'MOCK / DRY-RUN'}")
     print(f"Planned logical calls: {len(calls)}")
     print(f"Configured MAX_LIVE_CALLS: {accounting.max_live_calls}")
+    print(f"Persistent Global Attempts So Far: {accounting.network_attempts}")
     print("=" * 60)
 
     results = []
     for idx, c in enumerate(calls, 1):
-        print(f"\n[{idx}/4] Executing: {c['name']} (model: {c['label']})...")
+        print(f"\n[{idx}/4] Executing: {c['name']} (request model: {c['model']!r})...")
         payload = {
             "audio": c["clip"],
             "model": c["model"],
@@ -96,9 +97,12 @@ def run_probe(live: bool = False) -> None:
         try:
             res = gnani_client.call("stt", payload, live=live)
             wall_time = time.perf_counter() - start
+            reported_model = res.get("model", "unspecified")
             results.append({
                 "probe": c["name"],
                 "model": c["label"],
+                "req_model": c["model"],
+                "reported_model": reported_model,
                 "success": res.get("success"),
                 "transcript": res.get("transcript"),
                 "latency_sec": res.get("end_to_end_latency", wall_time),
@@ -106,6 +110,7 @@ def run_probe(live: bool = False) -> None:
                 "mock": res.get("mock", False),
             })
             print(f"    Success: {res.get('success')}")
+            print(f"    Reported Model: '{reported_model}'")
             print(f"    Transcript: '{res.get('transcript')}'")
             print(f"    Latency: {results[-1]['latency_sec']:.3f}s")
             print(f"    Cache Hit: {res.get('from_cache', False)}")
@@ -114,20 +119,31 @@ def run_probe(live: bool = False) -> None:
             results.append({
                 "probe": c["name"],
                 "model": c["label"],
+                "req_model": c["model"],
                 "success": False,
                 "error": str(e),
             })
 
     print("\n" + "=" * 60)
-    print("PROBE SUMMARY REPORT")
+    print("PROBE SUMMARY & MODEL VERIFICATION REPORT")
     print("=" * 60)
     for r in results:
         status = "OK" if r.get("success") else "FAIL"
-        print(f"- {r['model']:<15} | Status: {status:<5} | Latency: {r.get('latency_sec', 0):.3f}s | Cache: {r.get('from_cache')} | Mock: {r.get('mock')}")
+        rep = r.get("reported_model", "none")
+        print(f"- {r['model']:<25} | Status: {status:<5} | Server Model: {rep:<12} | Latency: {r.get('latency_sec', 0):.3f}s")
         if r.get("transcript"):
             print(f"  Transcript: '{r['transcript']}'")
         if r.get("error"):
             print(f"  Error: {r['error']}")
+
+    # Model Output Divergence Verification
+    if len(results) >= 2 and results[0].get("success") and results[1].get("success"):
+        t1 = results[0].get("transcript", "")
+        t2 = results[1].get("transcript", "")
+        diff = (t1 != t2)
+        print(f"\n[Verification] Clip 1 Transcript Divergence (v2.5 vs v3.0): {'DIVERGENT (Models produce different hypotheses)' if diff else 'IDENTICAL'}")
+
+    print(f"\n[Persistent Accounting] Global Network Attempts: {accounting.network_attempts}/{accounting.max_live_calls}")
 
     print("\nAccountant Statistics:")
     print(f"  Live Calls Made:     {accounting.live_calls}")

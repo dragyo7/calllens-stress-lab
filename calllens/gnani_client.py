@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, BinaryIO, Literal, Union
 
 from dotenv import load_dotenv
+from filelock import FileLock
 
 # Ensure environment is loaded from .env if present
 load_dotenv()
@@ -73,9 +74,25 @@ logger.addHandler(_handler)
 logger.setLevel(logging.INFO)
 
 
+def _get_accounting_paths() -> tuple[Path, Path]:
+    custom = os.getenv("CALLENS_ACCOUNTING_FILE")
+    if custom:
+        state_file = Path(custom)
+    else:
+        data_dir = Path(os.getenv("DATA_DIR", "../calllens-data"))
+        state_file = data_dir / "call_accounting.json"
+    lock_file = state_file.with_suffix(".lock")
+    return state_file, lock_file
+
+
 @dataclass
 class CallAccounting:
-    """Thread-safe accounting of calls, retries, attempts, and cache hits."""
+    """Thread-safe and process-safe accounting of calls, retries, attempts, and cache hits.
+
+    Persists counts to a shared JSON file using FileLock so that separate script processes
+    (usage_probe.py, format_pilot.py, gen_utterances.py, benchmark.py) share ONE immutable
+    global network-attempt ceiling.
+    """
 
     live_calls: int = 0
     cache_hits: int = 0
@@ -85,49 +102,125 @@ class CallAccounting:
     max_live_calls: int = int(os.getenv("MAX_LIVE_CALLS", str(DEFAULT_MAX_LIVE_CALLS)))
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
+    def __post_init__(self) -> None:
+        try:
+            self._sync_from_disk()
+        except Exception:
+            pass
+
+    def _sync_from_disk(self) -> dict[str, int]:
+        state_file, _ = _get_accounting_paths()
+        if not state_file.exists():
+            return {
+                "live_calls": self.live_calls,
+                "cache_hits": self.cache_hits,
+                "retries": self.retries,
+                "network_attempts": self.network_attempts,
+                "mock_calls": self.mock_calls,
+            }
+        try:
+            with open(state_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.live_calls = data.get("live_calls", self.live_calls)
+                self.cache_hits = data.get("cache_hits", self.cache_hits)
+                self.retries = data.get("retries", self.retries)
+                self.network_attempts = data.get("network_attempts", self.network_attempts)
+                self.mock_calls = data.get("mock_calls", self.mock_calls)
+                return data
+        except Exception:
+            return {
+                "live_calls": self.live_calls,
+                "cache_hits": self.cache_hits,
+                "retries": self.retries,
+                "network_attempts": self.network_attempts,
+                "mock_calls": self.mock_calls,
+            }
+
+    def _save_to_disk(self, data: dict[str, int]) -> None:
+        state_file, _ = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = state_file.with_suffix(".tmp")
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        temp_file.replace(state_file)
+
     def record_cache_hit(self) -> None:
-        with self._lock:
-            self.cache_hits += 1
+        state_file, lock_file = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(lock_file), timeout=10), self._lock:
+            data = self._sync_from_disk()
+            data["cache_hits"] = data.get("cache_hits", 0) + 1
+            self.cache_hits = data["cache_hits"]
+            self._save_to_disk(data)
 
     def record_mock_call(self) -> None:
-        with self._lock:
-            self.mock_calls += 1
+        state_file, lock_file = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(lock_file), timeout=10), self._lock:
+            data = self._sync_from_disk()
+            data["mock_calls"] = data.get("mock_calls", 0) + 1
+            self.mock_calls = data["mock_calls"]
+            self._save_to_disk(data)
 
     def can_make_live_call(self) -> bool:
-        with self._lock:
-            return self.network_attempts < self.max_live_calls
+        state_file, lock_file = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(lock_file), timeout=10), self._lock:
+            data = self._sync_from_disk()
+            return data.get("network_attempts", 0) < self.max_live_calls
 
     def check_and_reserve_live_call(self) -> None:
-        with self._lock:
-            if self.network_attempts >= self.max_live_calls:
+        state_file, lock_file = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(lock_file), timeout=10), self._lock:
+            data = self._sync_from_disk()
+            attempts = data.get("network_attempts", 0)
+            if attempts >= self.max_live_calls:
                 raise CallLimitExceededError(
-                    f"Live network attempt cap reached: {self.network_attempts}/{self.max_live_calls}. "
+                    f"Persistent global network attempt cap reached across processes: {attempts}/{self.max_live_calls}. "
                     f"Set MAX_LIVE_CALLS to increase budget."
                 )
 
     def check_and_reserve_network_attempt(self) -> None:
-        with self._lock:
-            if self.network_attempts >= self.max_live_calls:
+        state_file, lock_file = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(lock_file), timeout=10), self._lock:
+            data = self._sync_from_disk()
+            attempts = data.get("network_attempts", 0)
+            if attempts >= self.max_live_calls:
                 raise CallLimitExceededError(
-                    f"Live network attempt cap reached: {self.network_attempts}/{self.max_live_calls}. "
+                    f"Persistent global network attempt cap reached across processes: {attempts}/{self.max_live_calls}. "
                     f"Set MAX_LIVE_CALLS to increase budget."
                 )
-            self.network_attempts += 1
+            data["network_attempts"] = attempts + 1
+            self.network_attempts = data["network_attempts"]
+            self._save_to_disk(data)
 
     def record_network_attempt(self) -> None:
-        # Kept for backward compatibility if called directly
         pass
 
     def record_retry(self) -> None:
-        with self._lock:
-            self.retries += 1
+        state_file, lock_file = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(lock_file), timeout=10), self._lock:
+            data = self._sync_from_disk()
+            data["retries"] = data.get("retries", 0) + 1
+            self.retries = data["retries"]
+            self._save_to_disk(data)
 
     def record_live_success(self) -> None:
-        with self._lock:
-            self.live_calls += 1
+        state_file, lock_file = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(lock_file), timeout=10), self._lock:
+            data = self._sync_from_disk()
+            data["live_calls"] = data.get("live_calls", 0) + 1
+            self.live_calls = data["live_calls"]
+            self._save_to_disk(data)
 
     def reset(self, new_max_live_calls: int | None = None) -> None:
-        with self._lock:
+        state_file, lock_file = _get_accounting_paths()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        with FileLock(str(lock_file), timeout=10), self._lock:
             self.live_calls = 0
             self.cache_hits = 0
             self.retries = 0
@@ -135,6 +228,14 @@ class CallAccounting:
             self.mock_calls = 0
             if new_max_live_calls is not None:
                 self.max_live_calls = new_max_live_calls
+            data = {
+                "live_calls": 0,
+                "cache_hits": 0,
+                "retries": 0,
+                "network_attempts": 0,
+                "mock_calls": 0,
+            }
+            self._save_to_disk(data)
 
 
 # Global accounting instance

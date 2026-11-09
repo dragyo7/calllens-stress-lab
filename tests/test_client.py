@@ -142,7 +142,8 @@ def test_retries_respect_and_cannot_bypass_cap(sample_wav):
         with pytest.raises(CallLimitExceededError) as exc_info:
             gnani_client.call("stt", payload, live=True, use_cache=False)
 
-        assert "Live network attempt cap reached: 2/2" in str(exc_info.value)
+        assert "global network attempt cap reached" in str(exc_info.value).lower()
+        assert "2/2" in str(exc_info.value)
         assert accounting.network_attempts == 2
         assert mock_transcribe.call_count == 2
         assert accounting.live_calls == 0

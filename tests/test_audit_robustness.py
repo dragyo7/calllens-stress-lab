@@ -153,3 +153,64 @@ def test_zero_duration_audio_rejected(client):
     )
     assert res.status_code == 400
 
+
+def test_persistent_global_counter_cross_process(tmp_path):
+    """Prove that separate script processes share ONE persistent network-attempt cap that cannot be bypassed."""
+    import subprocess
+    import sys
+
+    acc_file = tmp_path / "shared_accounting.json"
+    env_vars = os.environ.copy()
+    env_vars["CALLENS_ACCOUNTING_FILE"] = str(acc_file)
+    env_vars["MAX_LIVE_CALLS"] = "5"
+    env_vars["GNANI_API_KEY"] = "mock_key_for_process_test"
+
+    # Worker script that reserves N attempts
+    worker_code = """
+import os, sys
+from calllens.gnani_client import accounting, CallLimitExceededError
+
+attempts_to_make = int(sys.argv[1])
+for i in range(attempts_to_make):
+    try:
+        accounting.check_and_reserve_network_attempt()
+        print(f"RESERVED {i+1}")
+    except CallLimitExceededError as e:
+        print(f"BLOCKED: {e}")
+        sys.exit(42)
+"""
+
+    # Process 1 (simulating Gate G1: makes 2 attempts)
+    p1 = subprocess.run(
+        [sys.executable, "-c", worker_code, "2"],
+        capture_output=True,
+        text=True,
+        env=env_vars,
+    )
+    assert p1.returncode == 0
+    assert "RESERVED 1" in p1.stdout
+    assert "RESERVED 2" in p1.stdout
+
+    # Process 2 (simulating Gate G2: makes 2 attempts)
+    p2 = subprocess.run(
+        [sys.executable, "-c", worker_code, "2"],
+        capture_output=True,
+        text=True,
+        env=env_vars,
+    )
+    assert p2.returncode == 0
+    assert "RESERVED 1" in p2.stdout
+    assert "RESERVED 2" in p2.stdout
+
+    # Process 3 (simulating Gate G3: tries to make 2 attempts, but only 1 remains before hitting cap 5)
+    p3 = subprocess.run(
+        [sys.executable, "-c", worker_code, "2"],
+        capture_output=True,
+        text=True,
+        env=env_vars,
+    )
+    # Must be blocked on the 2nd attempt because total reached 5
+    assert p3.returncode == 42
+    assert "RESERVED 1" in p3.stdout
+    assert "BLOCKED: Persistent global network attempt cap reached across processes: 5/5" in p3.stdout
+
