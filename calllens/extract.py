@@ -185,6 +185,239 @@ def extract_entities(text: str | None) -> dict[str, int | None]:
     }
 
 
+# Customer concern detection rules
+CONCERN_RULES = [
+    {
+        "category": "salary_delay",
+        "label": "Salary delay (वेतन में देरी)",
+        "pattern": re.compile(
+            r"(?:वेतन|सैलरी|salary|tankhwah|तनख्वाह|पेमेंट लेट|delay|देरी|पैसा नहीं आया|सैलरी अभी नहीं|तनखा)",
+            re.IGNORECASE,
+        ),
+    },
+    {
+        "category": "technical_failure",
+        "label": "Technical / Banking transaction failure (तकनीकी विफलता)",
+        "pattern": re.compile(
+            r"(?:सर्वर डाउन|server down|transaction fail|पेमेंट फेल|खाते से कट गया|कट गए|technical issue|upi fail|bank error|तकनीकी समस्या|डिडक्ट)",
+            re.IGNORECASE,
+        ),
+    },
+    {
+        "category": "dispute_charges",
+        "label": "Disputed late fee / penalty charges (अतिरिक्त शुल्क विवाद)",
+        "pattern": re.compile(
+            r"(?:गलत चार्ज|dispute|penalty|पेनल्टी|extra charge|गलत बिल|चार्ज हटाओ|disputed|ब्याज ज्यादा|extra interest|अतिरिक्त शुल्क)",
+            re.IGNORECASE,
+        ),
+    },
+    {
+        "category": "medical_emergency",
+        "label": "Medical / Family emergency (चिकित्सा आपातकाल)",
+        "pattern": re.compile(
+            r"(?:तबीयत खराब|hospital|अस्पताल|medical|बीमार|इलाज|emergency|इमरजेंसी|दुर्घटना|दवा)",
+            re.IGNORECASE,
+        ),
+    },
+    {
+        "category": "out_of_station",
+        "label": "Customer out of station / traveling (शहर से बाहर)",
+        "pattern": re.compile(
+            r"(?:शहर से बाहर|out of station|गांव गया|गाँव|travel|यात्रा|बाहर हूं|out of town|सफर)",
+            re.IGNORECASE,
+        ),
+    },
+    {
+        "category": "extension_request",
+        "label": "Request for payment extension (समय सीमा विस्तार)",
+        "pattern": re.compile(
+            r"(?:समय चाहिए|वक्त दीजिए|कुछ दिन|next week|अगले हफ्ते|समय दें|mohlata|मोहल्लत|तारीख बढ़ा)",
+            re.IGNORECASE,
+        ),
+    },
+]
+
+PTP_PATTERNS = [
+    # e.g. "10 तारीख को पे कर दूंगा", "20 तारीख तक भर दूंगा", "15th को transfer"
+    re.compile(
+        r"(\b\d{1,2})\s*(?:तारीख|तारीख़|तारिख|th|st|nd|rd)?\s*(?:को|तक)?\s*(?:पे|पेमेंट|दूँगा|दूंगा|देंगे|भर|भरेंगे|भरूंगा|डाल|ट्रांसफर|pay|clear|transfer|जमा)",
+        re.IGNORECASE,
+    ),
+    # e.g. "pay by 10th", "transfer on 25th", "पे करूंगा 10 तारीख को"
+    re.compile(
+        r"(?:पे|पेमेंट|pay|clear|transfer|भरूंगा|भरेंगे|दूँगा|दूंगा|देंगे|जमा)\s*(?:तक|को|on|by)?\s*(?:the\s*)?(\b\d{1,2})(?:st|nd|rd|th|\s*(?:तारीख|तारीख़|तारिख))",
+        re.IGNORECASE,
+    ),
+    # Named day / relative dates
+    re.compile(
+        r"(\b(?:कल|परसों|सोमवार|मंगलवार|बुधवार|गुरुवार|शुक्रवार|शनिवार|रविवार|tomorrow|next\s+week)\b(?:\s*(?:तक|को))?)",
+        re.IGNORECASE,
+    ),
+]
+
+
+def extract_ptp_date(text: str | None, due_day: int | None = None) -> str | None:
+    """Extracts Promise-To-Pay (PTP) date or commitment commitment from dialogue.
+
+    Returns None if no promise date is found.
+    """
+    if not text:
+        return None
+
+    for pat in PTP_PATTERNS:
+        for m in pat.finditer(text):
+            val = m.group(1).strip()
+            # If numeric day
+            if val.isdigit():
+                day = int(val)
+                if 1 <= day <= 31:
+                    # If this matches due_day exactly, continue searching next match
+                    if due_day and day == due_day:
+                        continue
+                    return f"{day} तारीख"
+            else:
+                return val
+
+    # Hindi number words for PTP date (e.g. "दस तारीख को दूंगा")
+    for word, num in HINDI_NUMS.items():
+        if re.search(rf"{word}\s*तारीख\s*(?:को|तक)?\s*(?:दूंगा|दूँगा|पे|भर|ट्रांसफर)", text, re.IGNORECASE):
+            if due_day and num == due_day:
+                continue
+            return f"{num} तारीख"
+
+    return None
+
+
+def extract_customer_concern(text: str | None) -> dict[str, str]:
+    """Identifies the customer's primary reason or dispute from the conversation."""
+    if not text:
+        return {
+            "category": "general",
+            "label": "Standard payment reminder (सामान्य भुगतान अनुस्मारक)",
+        }
+
+    for rule in CONCERN_RULES:
+        if rule["pattern"].search(text):
+            return {
+                "category": rule["category"],
+                "label": rule["label"],
+            }
+
+    return {
+        "category": "general",
+        "label": "Standard payment reminder (सामान्य भुगतान अनुस्मारक)",
+    }
+
+
+def extract_followup_details(
+    text: str | None,
+    customer_name: str | None = None,
+) -> dict[str, Any]:
+    """Extracts complete follow-up details from a customer service or collection call.
+
+    Extracts:
+    1. Outstanding amount (int or None)
+    2. Original due day (int or None)
+    3. Promise-to-pay date (str or None)
+    4. Customer concern (str)
+    5. Call summary (str)
+    6. Suggested Timbre TTS reminder draft (str)
+
+    Never silently assumes missing values.
+    """
+    if not text:
+        return {
+            "amount": None,
+            "amount_formatted": "Not detected",
+            "due_day": None,
+            "due_date_formatted": "Not detected",
+            "ptp_date": None,
+            "ptp_date_formatted": "Not detected",
+            "customer_name": customer_name or "ग्राहक",
+            "concern": "No dialogue text detected",
+            "concern_category": "none",
+            "call_summary": "No audio transcript available for analysis.",
+            "suggested_reminder": "नमस्ते, कृपया अपने खाते की बकाया राशि का भुगतान करें। धन्यवाद।",
+            "is_complete": False,
+        }
+
+    amount = extract_amount(text)
+    due_day = extract_due_day(text)
+    ptp_date = extract_ptp_date(text, due_day=due_day)
+    concern_info = extract_customer_concern(text)
+
+    # Name extraction heuristic (e.g., "राहुल शर्मा जी", "हेलो प्रिया वर्मा")
+    detected_name = customer_name
+    if not detected_name:
+        m_name = re.search(
+            r"(?:नमस्ते|हेलो|प्रिय|श्रीमान|hello|dear)\s+([A-Za-z\u0900-\u097F]+(?:\s+[A-Za-z\u0900-\u097F]+)?)\s*(?:जी|,|\b)",
+            text,
+            re.IGNORECASE,
+        )
+        if m_name:
+            cand = m_name.group(1).strip()
+            if len(cand) > 2 and cand.lower() not in ["aapka", "sir", "madam", "ji", "aapki"]:
+                detected_name = cand
+
+    c_name = detected_name or "ग्राहक"
+    amount_str = f"₹{amount:,.0f}" if amount is not None else "Not detected"
+    due_str = f"{due_day} तारीख" if due_day is not None else "Not detected"
+    ptp_str = ptp_date if ptp_date is not None else "Not detected"
+
+    # Call summary generation
+    summary_parts = []
+    if amount is not None:
+        summary_parts.append(f"बकाया राशि {amount_str}")
+    if due_day is not None:
+        summary_parts.append(f"देय तिथि {due_str}")
+    if concern_info["category"] != "general":
+        summary_parts.append(f"ग्राहक का विषय: {concern_info['label']}")
+    if ptp_date:
+        summary_parts.append(f"वचनबद्ध भुगतान तिथि (PTP): {ptp_str}")
+
+    if not summary_parts:
+        call_summary = "सामान्य कॉल विवरण: कोई विशिष्ट वित्तीय आंकड़े नहीं मिले।"
+    else:
+        call_summary = " • ".join(summary_parts) + "।"
+
+    # Natural reminder synthesis template for Timbre TTS
+    if ptp_date and amount is not None:
+        suggested_reminder = (
+            f"नमस्ते {c_name} जी, आपके खाते का {amount_str} का भुगतान {ptp_str} तक "
+            f"करने का आपका वादा था। असुविधा से बचने के लिए कृपया समय पर भुगतान करें। धन्यवाद।"
+        )
+    elif amount is not None and due_day is not None:
+        suggested_reminder = (
+            f"नमस्ते {c_name} जी, आपके खाते की बकाया राशि {amount_str} की देय तिथि {due_str} है। "
+            f"विलंब शुल्क से बचने के लिए कृपया आज ही भुगतान करें। धन्यवाद।"
+        )
+    elif amount is not None:
+        suggested_reminder = (
+            f"नमस्ते {c_name} जी, आपके खाते की बकाया राशि {amount_str} देय है। "
+            f"कृपया अतिशीघ्र भुगतान पूरा करें। धन्यवाद।"
+        )
+    else:
+        suggested_reminder = (
+            f"नमस्ते {c_name} जी, यह आपके खाते के संबंध में बैंक से एक महत्वपूर्ण सूचना है। "
+            f"कृपया तुरंत संपर्क करें। धन्यवाद।"
+        )
+
+    return {
+        "amount": amount,
+        "amount_formatted": amount_str,
+        "due_day": due_day,
+        "due_date_formatted": due_str,
+        "ptp_date": ptp_date,
+        "ptp_date_formatted": ptp_str,
+        "customer_name": c_name,
+        "concern": concern_info["label"],
+        "concern_category": concern_info["category"],
+        "call_summary": call_summary,
+        "suggested_reminder": suggested_reminder,
+        "is_complete": (amount is not None and due_day is not None),
+    }
+
+
 def evaluate_entity_accuracy(
     predictions: list[dict[str, int | None]],
     ground_truth: list[dict[str, int | None]],

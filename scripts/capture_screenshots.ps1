@@ -15,7 +15,14 @@ Start-Sleep -Seconds 1
 Start-Sleep -Seconds 1
 
 $views = @(
-    @{ Name = "dashboard_1440x900.png"; Width = 1440; Height = 900; Url = "http://127.0.0.1:8000/" }
+    @{ Name = "dashboard_1440x900.png"; Width = 1440; Height = 900; Url = "http://127.0.0.1:8000/#overview" },
+    @{ Name = "followup_desk.png"; Width = 1440; Height = 1050; Url = "http://127.0.0.1:8000/#followup-desk" },
+    @{ Name = "stt_studio.png"; Width = 1440; Height = 900; Url = "http://127.0.0.1:8000/#stt-studio" },
+    @{ Name = "tts_studio.png"; Width = 1440; Height = 900; Url = "http://127.0.0.1:8000/#tts-studio" },
+    @{ Name = "live_playground.png"; Width = 1440; Height = 900; Url = "http://127.0.0.1:8000/#live-playground" },
+    @{ Name = "model_comparison_view.png"; Width = 1440; Height = 900; Url = "http://127.0.0.1:8000/#comparison" },
+    @{ Name = "mobile_390x844.png"; Width = 390; Height = 844; Url = "http://127.0.0.1:8000/#overview" },
+    @{ Name = "dashboard_1024x768.png"; Width = 1024; Height = 768; Url = "http://127.0.0.1:8000/#overview" }
 )
 
 foreach ($v in $views) {

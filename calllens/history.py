@@ -200,6 +200,65 @@ def clear_history(db_url: str | None = None) -> int:
         session.close()
 
 
+def record_followup_history(
+    *,
+    customer_name: str,
+    amount: int | None,
+    due_date: str | None,
+    ptp_date: str | None,
+    concern: str,
+    reminder_text: str,
+    voice: str,
+    audio_filename: str | None,
+    duration_sec: float | None = None,
+    latency_sec: float = 0.0,
+    status: str = "completed",
+    confirmed_by: str = "Operator (Verified)",
+    metadata: dict[str, Any] | None = None,
+    db_url: str | None = None,
+) -> int:
+    """Records a reviewed and confirmed Follow-up Desk action into persistent history."""
+    session = _get_db_session(db_url)
+    try:
+        combined_meta = {
+            "customer_name": customer_name,
+            "amount": amount,
+            "due_date": due_date,
+            "ptp_date": ptp_date,
+            "concern": concern,
+            "confirmed_by": confirmed_by,
+            **(metadata or {}),
+        }
+        amt_str = f"₹{amount:,.0f}" if amount is not None else "Not detected"
+        due_str = due_date if due_date else "None"
+        ptp_str = ptp_date if ptp_date else "None"
+
+        rec = AudioHistoryRecord(
+            kind="followup",
+            session_id=f"flw_{int(time.time()*1000)}",
+            model=f"Prisma v3.0 + Timbre ({voice})",
+            language="hi-IN",
+            format="WAV 16kHz Mono",
+            duration_sec=duration_sec,
+            latency_sec=round(latency_sec, 3),
+            status=status,
+            input_preview=f"{customer_name} | {amt_str} | Due: {due_str} | PTP: {ptp_str} | Concern: {concern[:40]}",
+            output_preview=reminder_text[:300] if reminder_text else "(No reminder text)",
+            audio_filename=audio_filename,
+            metadata_json=json.dumps(combined_meta, ensure_ascii=False),
+        )
+        session.add(rec)
+        session.commit()
+        rec_id = rec.id
+        return rec_id
+    except Exception as exc:
+        session.rollback()
+        logger.error("Failed to record follow-up history: %s", exc)
+        return -1
+    finally:
+        session.close()
+
+
 def cleanup_old_temp_audio(temp_dir: Path, max_age_hours: int = 24) -> int:
     """Deletes temporary audio files older than max_age_hours."""
     if not temp_dir.exists():

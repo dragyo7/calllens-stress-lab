@@ -7,13 +7,14 @@ Enterprise speech recognition systems in India frequently underperform in produc
 ---
 
 ### The Solution: CallLens Speech Intelligence Platform
-**CallLens** is a unified Speech Intelligence & Telephony Evaluation Platform designed for **The Great Indian Internship Challenge by Gnani.ai**. It transforms speech AI engineering into an intuitive, high-performance studio workstation with 5 integrated core pillars:
+**CallLens** is a unified Speech Intelligence & Telephony Evaluation Platform designed for **The Great Indian Internship Challenge by Gnani.ai**. It transforms speech AI engineering into an intuitive, high-performance studio workstation with 6 integrated core pillars:
 
 1. **Speech-to-Text (STT) Studio:** High-throughput transcription workstation supporting audio file uploads (WAV, MP3, OGG, FLAC &le; 5MB), real-time browser microphone recording with live Web Audio API waveform visualization, preloaded benchmark speech clips, 10 Indic languages, multiple output formats (verbatim, ITN transcribe, codemix), and one-click transcript copy/download.
 2. **Text-to-Speech (TTS) Studio:** Natural speech synthesis powered by the official Gnani Timbre v2.5 catalog (42 Indic voices, highlighting verified flagship Hindi male `Pranav` and female `Kaveri`), dynamic speaking rates (0.85x–1.15x), banking & OTP quick templates, embedded audio player, and instant WAV downloads.
 3. **Live Speech Playground (WebSocket Gateway):** High-performance bidirectional streaming session gateway over `/ws/speech` capturing microphone audio chunks in real time, emitting transparent lifecycle events (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`), and executing atomic transcription and voice feedback with complete architectural honesty (zero fabricated streaming illusions).
-4. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls.
-5. **Audio History & Audit Log:** Persistent, audit-ready SQLite ledger of all STT transcriptions and TTS voice generations, tracking timestamps, model/voice IDs, latencies, preview text, and execution statuses.
+4. **CallLens Follow-up Desk (Human-in-the-Loop BFSI Operations):** Production-ready debt collection operations desk. Ingests authentic Hindi customer calls, extracts verified commitments (customer identity, overdue amounts, payment promise dates, and hardship reasons), strictly flags unverified/missing fields for human review (never silently hallucinating amounts or dates), and synthesizes courteous, personalized Hindi reminder calls via Gnani Timbre neural TTS.
+5. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls.
+6. **Audio History & Audit Log:** Persistent, audit-ready SQLite ledger of all STT transcriptions and TTS voice generations, tracking timestamps, model/voice IDs, latencies, preview text, and execution statuses.
 
 ---
 

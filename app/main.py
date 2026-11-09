@@ -26,6 +26,7 @@ import re
 import sys
 import time
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,36 @@ class TTSRequest(BaseModel):
     language: str = Field(default="hi-IN", description="Language code")
     speed: float = Field(default=1.0, description="Speaking rate (0.85 to 1.15)")
     live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
+
+
+class FollowupProcessRequest(BaseModel):
+    clip_id: str | None = Field(default=None, description="Preloaded clip or scenario ID")
+    scenario_id: str | None = Field(default=None, description="Preloaded scenario ID alias")
+    audio_base64: str | None = Field(default=None, description="Base64 encoded audio recording")
+    model: str = Field(default="prisma-v3.0", description="ASR model for transcription")
+    customer_name: str | None = Field(default=None, description="Optional customer name hint")
+    customer: str | None = Field(default=None, description="Customer alias")
+    live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
+    mock_transcript: str | None = Field(default=None, description="Optional mock transcript for testing")
+    transcript: str | None = Field(default=None, description="Transcript alias")
+    language: str = Field(default="hi-IN", description="Language code")
+
+
+class FollowupConfirmRequest(BaseModel):
+    customer_name: str | None = Field(default=None, description="Customer name confirmed by operator")
+    customer: str | None = Field(default=None, description="Customer alias")
+    amount: int | float | None = Field(default=None, description="Confirmed outstanding amount (INR)")
+    due_date: str | None = Field(default=None, description="Confirmed due date")
+    ptp_date: str | None = Field(default=None, description="Confirmed promise-to-pay date")
+    concern: str | None = Field(default="none", description="Confirmed customer reason or concern")
+    call_summary: str | None = Field(default=None, description="Confirmed call summary")
+    summary: str | None = Field(default=None, description="Call summary alias")
+    reminder_text: str = Field(..., description="Reviewed reminder text for speech synthesis")
+    voice: str = Field(default="Pranav", description="Timbre voice for reminder")
+    speed: float = Field(default=1.0, description="Speaking rate")
+    language: str = Field(default="hi-IN", description="Language")
+    live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
+    operator_notes: str | None = Field(default=None, description="Audit notes from operator")
 
 
 def check_rate_limit(client_ip: str) -> None:
@@ -1231,4 +1262,275 @@ async def speech_websocket_endpoint(websocket: WebSocket):
         logger.info("[WebSocket] Client disconnected: %s", session_id)
     except Exception as exc:
         logger.error("[WebSocket] Session error: %s", exc)
+
+
+# ---------------------------------------------------------
+# Follow-up Desk API Endpoints
+# ---------------------------------------------------------
+
+FOLLOWUP_SCENARIOS = [
+    {
+        "id": "scenario_01",
+        "clip_id": "bfsi_01",
+        "customer_name": "राहुल शर्मा",
+        "scenario_title": "Credit Card Overdue — Salary Delay",
+        "dialogue_text": "नमस्ते राहुल शर्मा जी, आपका क्रेडिट कार्ड बिल ₹ 50,000 है जो 5 तारीख तक देय था। ग्राहक ने बताया कि वेतन में देरी के कारण भुगतान नहीं हुआ और 10 तारीख को पे कर देंगे।",
+        "reference_amount": 50000,
+        "reference_due_day": 5,
+        "reference_ptp": "10 तारीख",
+        "reference_concern": "Salary delay (वेतन में देरी)",
+    },
+    {
+        "id": "scenario_02",
+        "clip_id": "bfsi_02",
+        "customer_name": "प्रिया वर्मा",
+        "scenario_title": "Home Loan EMI — Medical Emergency",
+        "dialogue_text": "हेलो प्रिया वर्मा, आपकी होम लोन ईएमआई 3,50,000 rupees 15 तारीख को कटनी थी। अस्पताल में इलाज के कारण थोड़ा विलंब हुआ, ग्राहक 20 तारीख तक भर देगा।",
+        "reference_amount": 350000,
+        "reference_due_day": 15,
+        "reference_ptp": "20 तारीख",
+        "reference_concern": "Medical / Family emergency (चिकित्सा आपातकाल)",
+    },
+    {
+        "id": "scenario_03",
+        "clip_id": "bfsi_04",
+        "customer_name": "सुनील कुमार",
+        "scenario_title": "Auto Loan Installment — Out of Town",
+        "dialogue_text": "नमस्ते सुनील कुमार जी, आपकी ऑटो लोन किस्त 1.5 लाख रुपये 25 तारीख तक जमा कराएं। ग्राहक अभी शहर से बाहर है और सोमवार को ट्रांसफर करेगा।",
+        "reference_amount": 150000,
+        "reference_due_day": 25,
+        "reference_ptp": "सोमवार को",
+        "reference_concern": "Customer out of station / traveling (शहर से बाहर)",
+    },
+    {
+        "id": "scenario_04",
+        "clip_id": "bfsi_06",
+        "customer_name": "राजेश गुप्ता",
+        "scenario_title": "Personal Loan — Netbanking Technical Failure",
+        "dialogue_text": "राजेश गुप्ता जी, आपका व्यक्तिगत ऋण बकाया 2.25 lakh है जो 12 तारीख तक भरें। सर्वर डाउन और यूपीआई फेल होने से पैसा नहीं गया, कल तक दोबारा प्रयास करेंगे।",
+        "reference_amount": 225000,
+        "reference_due_day": 12,
+        "reference_ptp": "कल तक",
+        "reference_concern": "Technical / Banking transaction failure (तकनीकी विफलता)",
+    },
+    {
+        "id": "scenario_05",
+        "clip_id": "bfsi_07",
+        "customer_name": "अनीता देसाई",
+        "scenario_title": "Account Overdraft — Late Fee Dispute",
+        "dialogue_text": "अनीता देसाई, आपके खाते से 75,500 rupees की ईएमआई 20 तारीख को काटी जानी है। अतिरिक्त पेनल्टी शुल्क पर विवाद है, शाखा प्रबंधक से बात करने के बाद भुगतान होगा।",
+        "reference_amount": 75500,
+        "reference_due_day": 20,
+        "reference_ptp": None,
+        "reference_concern": "Disputed late fee / penalty charges (अतिरिक्त शुल्क विवाद)",
+    },
+]
+
+
+@app.get("/api/followup/scenarios")
+def get_followup_scenarios():
+    """Returns curated synthetic Banking & Telephony Follow-up scenarios for operator review."""
+    return {"scenarios": FOLLOWUP_SCENARIOS}
+
+
+@app.post("/api/followup/process")
+async def process_followup_call(req: FollowupProcessRequest, request: Request):
+    """Processes a call recording for the Follow-up Desk:
+
+    1. Transcribes call audio using Prisma ASR.
+    2. Extracts structured banking fields (amount, due date, PTP date, concern, summary).
+    3. Generates a suggested Hindi/Hinglish reminder template for Timbre.
+    """
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    check_rate_limit(client_ip)
+
+    data_dir = get_data_dir()
+    audio_bytes: bytes | None = None
+    transcript: str = ""
+    scenario_match = None
+
+    # Check if scenario_id or clip_id matches a pre-loaded scenario
+    target_id = req.scenario_id or req.clip_id
+    if target_id:
+        for sc in FOLLOWUP_SCENARIOS:
+            if sc["id"] == target_id or sc["clip_id"] == target_id:
+                scenario_match = sc
+                break
+
+    # If mock_transcript or transcript provided, use directly
+    if req.mock_transcript:
+        transcript = req.mock_transcript
+    elif req.transcript:
+        transcript = req.transcript
+    elif scenario_match and not req.live and scenario_match.get("dialogue_text"):
+        transcript = scenario_match["dialogue_text"]
+    elif req.audio_base64:
+        try:
+            audio_bytes = base64.b64decode(req.audio_base64)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid audio_base64 encoding.")
+    elif target_id:
+        # Search audio files
+        clip_target = scenario_match["clip_id"] if scenario_match else target_id
+        for candidate in [
+            data_dir / "bfsi" / f"{clip_target}.wav",
+            data_dir / "bfsi_mock" / f"{clip_target}.wav",
+            data_dir / "processed_audio" / f"{clip_target}_clean.wav",
+            data_dir / "processed_audio" / f"{clip_target}.wav",
+        ]:
+            if candidate.exists():
+                audio_bytes = candidate.read_bytes()
+                break
+
+    # If we have audio bytes and no transcript yet, run transcription
+    if audio_bytes and not transcript:
+        temp_dir = data_dir / "temp"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_audio = temp_dir / f"flw_in_{int(time.time()*1000)}.wav"
+        temp_audio.write_bytes(audio_bytes)
+
+        try:
+            payload = {
+                "audio": temp_audio,
+                "model": req.model,
+                "language_code": "hi-IN",
+                "format": "transcribe",
+            }
+            if scenario_match:
+                payload["mock_transcript"] = scenario_match["dialogue_text"]
+
+            res = gnani_client.call("stt", payload, live=bool(req.live), use_cache=True)
+            transcript = res.get("transcript", "")
+        finally:
+            if temp_audio.exists():
+                try:
+                    temp_audio.unlink()
+                except Exception:
+                    pass
+
+    if not transcript and scenario_match:
+        transcript = scenario_match["dialogue_text"]
+
+    if not transcript:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to transcribe call audio. Please provide valid audio data or select a preloaded scenario.",
+        )
+
+    # Perform structured field extraction
+    c_name_hint = req.customer or req.customer_name or (scenario_match["customer_name"] if scenario_match else None)
+    extracted = extract.extract_followup_details(transcript, customer_name=c_name_hint)
+
+    return {
+        "success": True,
+        "transcript": transcript,
+        "customer": c_name_hint or "Customer",
+        "model": req.model,
+        "scenario_id": scenario_match["id"] if scenario_match else target_id,
+        "details": extracted,
+        "suggested_reminder_text": extracted.get("reminder_template") or "",
+        "extracted": extracted,
+    }
+
+
+@app.post("/api/followup/confirm")
+async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Request):
+    """Synthesizes verified follow-up reminder audio via Timbre and commits record to history."""
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    check_rate_limit(client_ip)
+
+    cust_name = req.customer or req.customer_name or "Customer"
+    c_summary = req.summary or req.call_summary or "Confirmed follow-up commitments"
+    c_amount = int(req.amount) if req.amount is not None else None
+    c_concern = req.concern or "none"
+
+    clean_text = req.reminder_text.strip()
+    if not clean_text:
+        raise HTTPException(status_code=400, detail="Reminder text cannot be empty.")
+    if len(clean_text) > 2000:
+        raise HTTPException(status_code=400, detail="Reminder text exceeds 2,000 characters.")
+
+    data_dir = get_data_dir()
+    temp_dir = data_dir / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    start_time = time.perf_counter()
+    is_live = bool(req.live)
+
+    tts_payload = {
+        "text": clean_text,
+        "voice": req.voice,
+        "model": "timbre-v2.5",
+        "language": req.language or "hi-IN",
+        "speed": req.speed,
+    }
+
+    try:
+        audio_bytes = gnani_client.call("tts", tts_payload, live=is_live, use_cache=True)
+        elapsed = time.perf_counter() - start_time
+    except Exception as exc:
+        logger.error("Follow-up reminder synthesis failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Reminder synthesis failed: {exc}")
+
+    try:
+        with io.BytesIO(audio_bytes) as bio:
+            info = sf.info(bio)
+            duration_sec = info.duration
+    except Exception:
+        duration_sec = len(clean_text) * 0.08
+
+    filename = f"tts_followup_{hashlib.md5(f'{clean_text}_{req.voice}_{req.speed}'.encode()).hexdigest()[:16]}.wav"
+    audio_path = temp_dir / filename
+    with open(audio_path, "wb") as f:
+        f.write(audio_bytes)
+
+    # Record into persistent audit history
+    hist_id = history.record_followup_history(
+        customer_name=cust_name,
+        amount=c_amount,
+        due_date=req.due_date,
+        ptp_date=req.ptp_date,
+        concern=c_concern,
+        reminder_text=clean_text,
+        voice=req.voice,
+        audio_filename=filename,
+        duration_sec=duration_sec,
+        latency_sec=elapsed,
+        status="completed",
+        confirmed_by="Operator (Human-in-the-Loop Verified)",
+        metadata={
+            "call_summary": c_summary,
+            "speed": req.speed,
+            "mock": not is_live,
+            "operator_notes": req.operator_notes,
+        },
+    )
+
+    b64_audio = base64.b64encode(audio_bytes).decode("ascii")
+    return {
+        "success": True,
+        "status": "confirmed_and_synthesized",
+        "record_id": hist_id,
+        "history_id": hist_id,
+        "audio_url": f"/api/tts/audio/{filename}",
+        "audio_b64": b64_audio,
+        "filename": filename,
+        "duration_s": round(duration_sec, 2),
+        "duration_sec": round(duration_sec, 2),
+        "latency_sec": round(elapsed, 3),
+        "voice": req.voice,
+        "customer": cust_name,
+        "reminder_text": clean_text,
+        "confirmed_record": {
+            "customer_name": cust_name,
+            "amount": c_amount,
+            "due_date": req.due_date,
+            "ptp_date": req.ptp_date,
+            "concern": c_concern,
+            "call_summary": c_summary,
+            "reminder_text": clean_text,
+            "voice": req.voice,
+            "confirmed_at": datetime.now(timezone.utc).isoformat(),
+        },
+    }
 

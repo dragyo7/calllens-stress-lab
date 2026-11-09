@@ -3,7 +3,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Tests: 113 Passing](https://img.shields.io/badge/tests-113%20passed-brightgreen.svg)]()
+[![Tests: 117 Passing](https://img.shields.io/badge/tests-117%20passed-brightgreen.svg)]()
 [![Safety Cap: Enforced](https://img.shields.io/badge/safety--cap-enforced-orange.svg)]()
 [![Provenance: Isolated](https://img.shields.io/badge/provenance-isolated-blueviolet.svg)]()
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
@@ -20,18 +20,23 @@ The platform provides an end-to-end speech engineering suite integrating:
 1. **Speech-to-Text (STT) Studio:** Audio file uploads (&le; 5 MB), live browser microphone recording with real-time Web Audio API waveform visualization, preloaded benchmark clips, 10 Indic languages, format selector (verbatim, ITN transcribe, codemix), and one-click transcript copy/download.
 2. **Text-to-Speech (TTS) Studio:** Natural voice synthesis powered by the official Gnani Timbre v2.5 catalog (42 Indic voices, highlighting verified flagship Hindi male `Pranav` and female `Kaveri`), dynamic speaking rates (0.85x–1.15x), banking & OTP quick templates, audio player with waveform preview, and WAV downloads.
 3. **Live Speech Playground (WebSocket Gateway):** High-performance bidirectional streaming session gateway over `/ws/speech` capturing microphone audio chunks in real time, emitting transparent lifecycle events (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`), and executing atomic transcription and voice feedback with complete architectural honesty (zero fabricated streaming illusions).
-4. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls.
-5. **Audio History & Audit Log:** Persistent, audit-ready SQLite ledger of all STT transcriptions and TTS voice generations, tracking timestamps, model/voice IDs, latencies, preview text, and execution statuses.
+4. **CallLens Follow-up Desk (Human-in-the-Loop BFSI Workflow):** Operational debt collection speech workflow. Ingests authentic Hindi debt collection calls, extracts actionable commitments (customer name, overdue amount, original due date, promise-to-pay date, hardship reason), strictly flags missing data for operator review (never hallucinating dates or amounts), and synthesizes respectful personalized Hindi voice reminders via Timbre.
+5. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls.
+6. **Audio History & Audit Log:** Persistent, audit-ready SQLite ledger of all STT transcriptions, TTS voice generations, and confirmed follow-up reminder dispatches.
 
 ---
 
 ## 2. Interactive Platform Showcase
 
-The dark-themed Linear/Vercel/Stripe-inspired interface provides 9 dedicated views, numerical keyboard navigation shortcuts (`[1]` to `[9]`), and a built-in Raycast command palette (`⌘K` or `/`).
+The dark-themed Linear/Vercel/Stripe-inspired interface provides 10 dedicated views, numerical keyboard navigation shortcuts (`[1]` to `[0]`), and a built-in Raycast command palette (`⌘K` or `/`).
 
 ### Overview Dashboard (1440 &times; 900)
 Unified speech AI overview with live KPI metric cards, Word Error Rate comparisons, latency trade-offs, and an enterprise deployment recommendation matrix.
 ![CallLens Desktop Dashboard](docs/screenshots/dashboard_1440x900.png)
+
+### CallLens Follow-up Desk (Human-in-the-Loop Collection Workflow)
+Interactive 3-step banking operations desk: Ingest call audio &rarr; Audit extracted commitments & review missing data &rarr; Synthesize respectful Hindi reminder calls with Timbre neural TTS.
+![CallLens Follow-up Desk](docs/screenshots/followup_desk.png)
 
 ### Speech-to-Text (STT) Studio
 Transcribe custom audio files, live microphone speech, or preloaded clips with Gnani Prisma v2.5 or v3.0, displaying real-time waveforms and processing latencies.
@@ -77,6 +82,7 @@ flowchart TD
         Server["FastAPI REST & WebSocket Gateway\n(app/main.py)"]
         STTEndpoint["POST /api/stt/transcribe\n(File Upload, Mic, Preloaded Clips)"]
         TTSEndpoint["POST /api/tts/synthesize\n(42 Timbre Voices, WAV Download)"]
+        FollowupDesk["POST /api/followup/process & confirm\n(Commitment Extraction & Human-in-Loop TTS)"]
         WSEndpoint["WebSocket /ws/speech\n(Lifecycle Events & Chunk Buffer)"]
         HistoryDB["GET & DELETE /api/history\n(Persistent SQLite Audit Trail)"]
     end

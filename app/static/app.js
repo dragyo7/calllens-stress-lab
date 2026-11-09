@@ -43,12 +43,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let chartInstances = {};
   let benchmarkClipsList = [];
 
-  // View titles map (9 views)
+  // View titles map (10 views)
   const viewTitles = {
     overview: 'Overview',
     'stt-studio': 'Speech-to-Text Studio',
     'tts-studio': 'Text-to-Speech Studio',
     'live-playground': 'Live Speech Playground',
+    'followup-desk': 'Follow-up Desk',
     comparison: 'Model Comparison',
     'stress-lab': 'Telephony Stress Lab',
     history: 'Audio Audit History',
@@ -118,6 +119,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewId === 'history') {
       loadHistory();
     }
+    if (viewId === 'followup-desk') {
+      initFollowupDesk();
+    }
   };
 
   // Sidebar navigation click listeners
@@ -135,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Keyboard navigation shortcuts ([1] to [9], ⌘K, Escape)
+  // Keyboard navigation shortcuts ([1] to [0], ⌘K, Escape)
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
       if (e.key === 'Escape' && cmdBackdrop && !cmdBackdrop.classList.contains('hidden')) {
@@ -166,11 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
       '2': 'stt-studio',
       '3': 'tts-studio',
       '4': 'live-playground',
-      '5': 'comparison',
-      '6': 'stress-lab',
-      '7': 'history',
-      '8': 'diagnostics',
-      '9': 'methodology',
+      '5': 'followup-desk',
+      '6': 'comparison',
+      '7': 'stress-lab',
+      '8': 'history',
+      '9': 'diagnostics',
+      '0': 'methodology',
     };
 
     if (keyNumberMap[e.key]) {
@@ -1529,6 +1534,334 @@ document.addEventListener('DOMContentLoaded', () => {
     window.showToast('Evaluation replayed from verified live benchmark', 'success');
   }
 
+  // Helper: HTML Escaper
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  window.playFlwAudio = function(url) {
+    const p = document.getElementById('flw-audio-player');
+    if (p) {
+      p.src = url;
+      p.play();
+    }
+  };
+
+  // Follow-up Desk Controller
+  let flwScenarios = [];
+  let flwSelectedScenarioId = 'scenario_01';
+  let flwInitialized = false;
+
+  async function initFollowupDesk() {
+    if (flwInitialized) return;
+    flwInitialized = true;
+
+    const customTranscript = document.getElementById('flw-custom-transcript');
+    const modelSelect = document.getElementById('flw-model-select');
+    const langSelect = document.getElementById('flw-lang-select');
+    const btnProcess = document.getElementById('flw-btn-process');
+    const processLoader = document.getElementById('flw-process-loader');
+    const reviewCard = document.getElementById('flw-review-card');
+    const missingAlert = document.getElementById('flw-missing-alert');
+    const missingFieldsText = document.getElementById('flw-missing-fields-text');
+    const transcriptText = document.getElementById('flw-transcript-text');
+    const summaryText = document.getElementById('flw-summary-text');
+    const customerName = document.getElementById('flw-customer-name');
+    const amountInput = document.getElementById('flw-amount-input');
+    const amountBadge = document.getElementById('flw-amount-badge');
+    const dueInput = document.getElementById('flw-due-input');
+    const dueBadge = document.getElementById('flw-due-badge');
+    const ptpInput = document.getElementById('flw-ptp-input');
+    const ptpBadge = document.getElementById('flw-ptp-badge');
+    const concernSelect = document.getElementById('flw-concern-select');
+    const chkConfirm = document.getElementById('flw-chk-confirm');
+    const operatorNotes = document.getElementById('flw-operator-notes');
+    const btnConfirmStep = document.getElementById('flw-btn-confirm-step');
+    const synthesisCard = document.getElementById('flw-synthesis-card');
+    const reminderText = document.getElementById('flw-reminder-text');
+    const voiceSelect = document.getElementById('flw-voice-select');
+    const btnSynthesize = document.getElementById('flw-btn-synthesize');
+    const synthLoader = document.getElementById('flw-synth-loader');
+    const audioOutputWrapper = document.getElementById('flw-audio-output-wrapper');
+    const audioPlayer = document.getElementById('flw-audio-player');
+    const btnDownloadWav = document.getElementById('flw-btn-download-wav');
+    const audioMeta = document.getElementById('flw-audio-meta');
+    const historyTbody = document.getElementById('flw-history-tbody');
+    const step1 = document.getElementById('flw-step-ind-1');
+    const step2 = document.getElementById('flw-step-ind-2');
+    const step3 = document.getElementById('flw-step-ind-3');
+
+    // Load scenarios catalog
+    try {
+      const res = await fetch('/api/followup/scenarios');
+      if (res.ok) {
+        const data = await res.json();
+        flwScenarios = data.scenarios || [];
+        if (flwScenarios.length > 0 && customTranscript) {
+          customTranscript.value = flwScenarios[0].transcript || '';
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch followup scenarios:', err);
+    }
+
+    // Scenario chip listeners
+    document.querySelectorAll('#flw-scenario-chips .scenario-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#flw-scenario-chips .scenario-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        flwSelectedScenarioId = chip.getAttribute('data-id');
+
+        const found = flwScenarios.find(s => s.id === flwSelectedScenarioId);
+        if (found && customTranscript) {
+          customTranscript.value = found.transcript || '';
+        }
+
+        // Reset downstream cards for fresh process
+        if (reviewCard) reviewCard.classList.add('hidden');
+        if (synthesisCard) synthesisCard.classList.add('hidden');
+        if (audioOutputWrapper) audioOutputWrapper.classList.add('hidden');
+        if (step1) step1.classList.add('active');
+        if (step2) step2.classList.remove('active');
+        if (step3) step3.classList.remove('active');
+      });
+    });
+
+    // Process button click
+    if (btnProcess) {
+      btnProcess.addEventListener('click', async () => {
+        btnProcess.disabled = true;
+        if (processLoader) processLoader.classList.remove('hidden');
+
+        try {
+          const payload = {
+            scenario_id: flwSelectedScenarioId,
+            transcript: customTranscript ? customTranscript.value.trim() : undefined,
+            model: modelSelect ? modelSelect.value : 'prisma-v3.0',
+            language: langSelect ? langSelect.value : 'hi-IN'
+          };
+
+          const res = await fetch('/api/followup/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || 'Failed to process follow-up call');
+          }
+
+          const data = await res.json();
+          const d = data.details || {};
+
+          // Populate step 2 fields
+          if (transcriptText) transcriptText.value = data.transcript || '';
+          if (summaryText) summaryText.value = d.summary || '';
+          if (customerName) customerName.value = data.customer || '';
+          if (amountInput) amountInput.value = (d.amount !== null && d.amount !== undefined) ? d.amount : '';
+
+          if (amountBadge) {
+            if (d.amount_detected) {
+              amountBadge.className = 'field-badge-extracted';
+              amountBadge.textContent = 'Detected';
+            } else {
+              amountBadge.className = 'field-badge-missing';
+              amountBadge.textContent = 'Not Detected — Operator Required';
+            }
+          }
+
+          if (dueInput) dueInput.value = d.due_date_formatted || '';
+          if (dueBadge) {
+            if (d.due_date_detected) {
+              dueBadge.className = 'field-badge-extracted';
+              dueBadge.textContent = 'Detected';
+            } else {
+              dueBadge.className = 'field-badge-missing';
+              dueBadge.textContent = 'Not Detected';
+            }
+          }
+
+          if (ptpInput) ptpInput.value = d.ptp_date_formatted || '';
+          if (ptpBadge) {
+            if (d.ptp_date_detected) {
+              ptpBadge.className = 'field-badge-extracted';
+              ptpBadge.textContent = 'Detected';
+            } else {
+              ptpBadge.className = 'field-badge-missing';
+              ptpBadge.textContent = 'Not Detected — Operator Required';
+            }
+          }
+
+          if (concernSelect && d.concern) {
+            concernSelect.value = d.concern;
+          }
+
+          // Missing fields alert
+          if (missingAlert && missingFieldsText) {
+            if (d.missing_fields && d.missing_fields.length > 0) {
+              missingFieldsText.textContent = `Field(s) requiring verification: ${d.missing_fields.join(', ')}.`;
+              missingAlert.classList.remove('hidden');
+            } else {
+              missingAlert.classList.add('hidden');
+            }
+          }
+
+          if (reminderText) {
+            reminderText.value = data.suggested_reminder_text || '';
+          }
+
+          // Reset confirmation controls
+          if (chkConfirm) chkConfirm.checked = false;
+          if (btnConfirmStep) btnConfirmStep.disabled = true;
+
+          // Reveal step 2 and update stepper
+          if (reviewCard) reviewCard.classList.remove('hidden');
+          if (step1) step1.classList.remove('active');
+          if (step2) step2.classList.add('active');
+
+          reviewCard.scrollIntoView({ behavior: 'smooth' });
+          window.showToast('Call commitments extracted. Operator review ready.', 'info');
+        } catch (err) {
+          console.error(err);
+          window.showToast('Error processing call: ' + err.message, 'error');
+        } finally {
+          btnProcess.disabled = false;
+          if (processLoader) processLoader.classList.add('hidden');
+        }
+      });
+    }
+
+    // Checkbox operator confirm toggle
+    if (chkConfirm && btnConfirmStep) {
+      chkConfirm.addEventListener('change', () => {
+        btnConfirmStep.disabled = !chkConfirm.checked;
+      });
+    }
+
+    // Confirm step button
+    if (btnConfirmStep) {
+      btnConfirmStep.addEventListener('click', () => {
+        if (!chkConfirm.checked) return;
+
+        if (step2) step2.classList.remove('active');
+        if (step3) step3.classList.add('active');
+        if (synthesisCard) {
+          synthesisCard.classList.remove('hidden');
+          synthesisCard.scrollIntoView({ behavior: 'smooth' });
+        }
+        window.showToast('Commitment audit confirmed by operator. Proceeding to voice synthesis.', 'success');
+      });
+    }
+
+    // Synthesize reminder audio button
+    if (btnSynthesize) {
+      btnSynthesize.addEventListener('click', async () => {
+        btnSynthesize.disabled = true;
+        if (synthLoader) synthLoader.classList.remove('hidden');
+
+        try {
+          const amtParsed = amountInput && amountInput.value.trim() ? parseFloat(amountInput.value) : null;
+          const payload = {
+            customer: customerName ? customerName.value.trim() : 'Customer',
+            amount: isNaN(amtParsed) ? null : amtParsed,
+            due_date: dueInput ? dueInput.value.trim() : null,
+            ptp_date: ptpInput ? ptpInput.value.trim() : null,
+            concern: concernSelect ? concernSelect.value : null,
+            summary: summaryText ? summaryText.value.trim() : 'Confirmed follow-up summary',
+            reminder_text: reminderText ? reminderText.value.trim() : 'Payment reminder notice',
+            voice: voiceSelect ? voiceSelect.value : 'pranav',
+            language: 'hi-IN',
+            operator_notes: operatorNotes ? operatorNotes.value.trim() : null
+          };
+
+          const res = await fetch('/api/followup/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || 'Failed to synthesize reminder audio');
+          }
+
+          const data = await res.json();
+
+          // Audio player setup
+          if (data.audio_b64) {
+            const byteChars = atob(data.audio_b64);
+            const byteNums = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+              byteNums[i] = byteChars.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNums);
+            const blob = new Blob([byteArray], { type: 'audio/wav' });
+            const audioUrl = URL.createObjectURL(blob);
+
+            if (audioPlayer) {
+              audioPlayer.src = audioUrl;
+              audioPlayer.load();
+            }
+
+            if (btnDownloadWav) {
+              btnDownloadWav.href = audioUrl;
+              const safeCust = (data.customer || 'customer').replace(/[^a-zA-Z0-9_-]/g, '_');
+              btnDownloadWav.download = `${safeCust}_reminder.wav`;
+            }
+
+            if (audioMeta) {
+              audioMeta.textContent = `Gnani Timbre (${data.voice}) • ${data.duration_s ? data.duration_s.toFixed(2) : '1.50'}s • Record ID: ${data.record_id ? data.record_id.slice(0, 8) : 'rec-live'}`;
+            }
+
+            if (audioOutputWrapper) {
+              audioOutputWrapper.classList.remove('hidden');
+              audioOutputWrapper.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            // Append to history table
+            if (historyTbody) {
+              const emptyTd = historyTbody.querySelector('td[colspan="7"]');
+              if (emptyTd) emptyTd.closest('tr').remove();
+
+              const tr = document.createElement('tr');
+              const amtDisplay = (amtParsed !== null && !isNaN(amtParsed)) ? `₹${amtParsed.toLocaleString('en-IN')}` : '<span class="text-amber">Not set</span>';
+              const concernText = concernSelect ? concernSelect.options[concernSelect.selectedIndex].text : 'General';
+
+              tr.innerHTML = `
+                <td class="font-mono">${new Date().toLocaleTimeString()}</td>
+                <td><strong>${escapeHtml(data.customer)}</strong></td>
+                <td class="font-mono text-cyan">${amtDisplay}</td>
+                <td><span class="badge-subtle">${escapeHtml(payload.ptp_date || '-')}</span></td>
+                <td>${escapeHtml(concernText)}</td>
+                <td><span class="field-badge-confirmed">Synthesized</span></td>
+                <td>
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="window.playFlwAudio('${audioUrl}')">▶ Play</button>
+                </td>
+              `;
+              historyTbody.prepend(tr);
+            }
+
+            window.showToast('Voice reminder synthesized and recorded to audit log.', 'success');
+          }
+        } catch (err) {
+          console.error(err);
+          window.showToast('Error synthesizing voice reminder: ' + err.message, 'error');
+        } finally {
+          btnSynthesize.disabled = false;
+          if (synthLoader) synthLoader.classList.add('hidden');
+        }
+      });
+    }
+  }
+
   // Load summary on start
   loadBenchmarkSummary();
+  initFollowupDesk();
 });

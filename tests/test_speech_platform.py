@@ -229,3 +229,95 @@ def test_websocket_speech_session(client):
         assert msg7["type"] == "tts_audio_ready"
         assert "audio_base64" in msg7
         assert msg7["duration_sec"] > 0
+
+
+def test_followup_scenarios_catalog(client):
+    """Verify GET /api/followup/scenarios returns curated banking scenarios."""
+    res = client.get("/api/followup/scenarios")
+    assert res.status_code == 200
+    data = res.json()
+    assert "scenarios" in data
+    assert len(data["scenarios"]) >= 5
+    first = data["scenarios"][0]
+    assert "id" in first
+    assert "customer_name" in first
+    assert "dialogue_text" in first
+    assert "reference_amount" in first
+
+
+def test_followup_process_scenario(client):
+    """Verify POST /api/followup/process accurately extracts fields from a scenario."""
+    res = client.post(
+        "/api/followup/process",
+        json={"clip_id": "scenario_01", "model": "prisma-v3.0", "live": 0},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert "transcript" in data
+    extracted = data["extracted"]
+    assert extracted["amount"] == 50000
+    assert extracted["due_day"] == 5
+    assert "10" in extracted["ptp_date"]
+    assert "Salary delay" in extracted["concern"]
+    assert "राहुल शर्मा" in extracted["suggested_reminder"]
+    assert extracted["is_complete"] is True
+
+
+def test_followup_process_missing_fields_not_assumed(client):
+    """Verify POST /api/followup/process never invents missing dates or amounts."""
+    res = client.post(
+        "/api/followup/process",
+        json={
+            "mock_transcript": "नमस्ते, मैं केवल अपने खाते के बारे में बात करना चाहता हूँ।",
+            "model": "prisma-v3.0",
+            "live": 0,
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    extracted = data["extracted"]
+    assert extracted["amount"] is None
+    assert extracted["amount_formatted"] == "Not detected"
+    assert extracted["due_day"] is None
+    assert extracted["due_date_formatted"] == "Not detected"
+    assert extracted["ptp_date"] is None
+    assert extracted["ptp_date_formatted"] == "Not detected"
+    assert extracted["is_complete"] is False
+
+
+def test_followup_confirm_and_synthesize(client):
+    """Verify POST /api/followup/confirm synthesizes verified reminder and logs to history."""
+    payload = {
+        "customer_name": "राहुल शर्मा",
+        "amount": 50000,
+        "due_date": "5 तारीख",
+        "ptp_date": "10 तारीख",
+        "concern": "Salary delay (वेतन में देरी)",
+        "call_summary": "बकाया राशि ₹50,000 • देय तिथि 5 तारीख • वेतन में देरी • वचनबद्ध तिथि 10 तारीख।",
+        "reminder_text": "नमस्ते राहुल शर्मा जी, आपके खाते का ₹50,000 का भुगतान 10 तारीख तक करने का आपका वादा था। धन्यवाद।",
+        "voice": "Pranav",
+        "speed": 1.0,
+        "live": 0,
+    }
+    res = client.post("/api/followup/confirm", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert "audio_url" in data
+    assert data["audio_url"].startswith("/api/tts/audio/")
+    assert data["history_id"] > 0
+    assert data["confirmed_record"]["customer_name"] == "राहुल शर्मा"
+
+    # Verify history persistence
+    hist_res = client.get("/api/history?kind=followup")
+    assert hist_res.status_code == 200
+    hist_data = hist_res.json()
+    records = hist_data["history"]
+    assert len(records) > 0
+    latest = records[0]
+    assert latest["kind"] == "followup"
+    assert "राहुल शर्मा" in latest["input_preview"]
+    assert latest["metadata"]["amount"] == 50000
+    assert latest["metadata"]["ptp_date"] == "10 तारीख"
+
