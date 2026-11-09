@@ -16,8 +16,10 @@ Security Controls:
 from __future__ import annotations
 
 import base64
+import html
 import io
 import json
+
 import logging
 import os
 import sys
@@ -172,9 +174,10 @@ async def run_stress_test(request: Request):
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > MAX_UPLOAD_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"File exceeds maximum upload size of {MAX_UPLOAD_BYTES / (1024*1024):.0f} MB.",
         )
+
 
     # Handle body as JSON or raw stream
     content_type = request.headers.get("content-type", "")
@@ -193,9 +196,10 @@ async def run_stress_test(request: Request):
         raw_audio_bytes = await request.body()
         if len(raw_audio_bytes) > MAX_UPLOAD_BYTES:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"File exceeds maximum upload size of {MAX_UPLOAD_BYTES / (1024*1024):.0f} MB.",
             )
+
         clip_id_header = request.headers.get("x-clip-id")
         cond_header = request.headers.get("x-condition", "clean")
         live_header = int(request.headers.get("x-live", "0"))
@@ -265,10 +269,12 @@ async def run_stress_test(request: Request):
                 break
 
         if not found or not input_audio_path or not input_audio_path.exists():
+            safe_id = html.escape(str(req_data.clip_id)[:64])
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Clip ID '{req_data.clip_id}' not found in available dataset manifests.",
+                detail=f"Clip ID '{safe_id}' not found in available dataset manifests.",
             )
+
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -87,7 +87,18 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
+.error-banner {
+  background-color: rgba(248, 113, 113, 0.15);
+  border: 1px solid var(--danger-color);
+  color: var(--danger-color);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
 .controls-card h2 {
+
   font-size: 1.2rem;
   margin-bottom: 16px;
   color: var(--text-main);

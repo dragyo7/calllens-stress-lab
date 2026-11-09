@@ -3,12 +3,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const stressForm = document.getElementById('stress-form');
   const btnSubmit = document.getElementById('btn-submit');
   const loader = document.getElementById('loader');
+  const errorBanner = document.getElementById('error-banner');
   const resultsSection = document.getElementById('results-section');
   const referenceCard = document.getElementById('reference-card');
   const refText = document.getElementById('ref-text');
   const gtEntities = document.getElementById('gt-entities');
   const gtAmtTag = document.getElementById('gt-amt-tag');
   const gtDayTag = document.getElementById('gt-day-tag');
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const qClip = urlParams.get('clip_id');
+  const qCond = urlParams.get('condition');
+  const qAuto = urlParams.get('auto') === '1';
+  const qError = urlParams.get('error');
+
+  function showError(msg) {
+    if (errorBanner) {
+      errorBanner.textContent = msg;
+      errorBanner.classList.remove('hidden');
+    } else {
+      alert(msg);
+    }
+  }
+
+  function hideError() {
+    if (errorBanner) {
+      errorBanner.classList.add('hidden');
+      errorBanner.textContent = '';
+    }
+  }
+
+  if (qError) {
+    showError(decodeURIComponent(qError));
+  }
 
   // Load clips list
   fetch('/api/clips')
@@ -21,6 +48,17 @@ document.addEventListener('DOMContentLoaded', () => {
           opt.textContent = `[${clip.category}] ${clip.label}`;
           clipSelect.appendChild(opt);
         });
+
+        if (qClip) {
+          clipSelect.value = qClip;
+        }
+        if (qCond) {
+          const radio = document.querySelector(`input[name="condition"][value="${qCond}"]`);
+          if (radio) radio.checked = true;
+        }
+        if (qAuto && (qClip || document.getElementById('audio-file').files.length > 0)) {
+          stressForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
       }
     })
     .catch(err => console.error('Failed to load clips:', err));
@@ -28,12 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Form submission
   stressForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    hideError();
 
     const formData = new FormData(stressForm);
     const audioFileInput = document.getElementById('audio-file');
 
     if (!formData.get('clip_id') && (!audioFileInput.files || audioFileInput.files.length === 0)) {
-      alert('Please select a pre-loaded test clip or upload an audio file.');
+      showError('Please select a pre-loaded test clip or upload an audio file.');
       return;
     }
 
@@ -64,22 +103,22 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify(payload),
       });
 
-
       if (!response.ok) {
         const errorData = await response.json();
-        alert(`Evaluation error: ${errorData.detail || 'Request failed'}`);
+        showError(`Evaluation error: ${errorData.detail || 'Request failed'}`);
         return;
       }
 
       const res = await response.json();
       displayResults(res);
     } catch (err) {
-      alert(`Network error: ${err.message}`);
+      showError(`Network error: ${err.message}`);
     } finally {
       btnSubmit.disabled = false;
       loader.classList.add('hidden');
     }
   });
+
 
   function displayResults(data) {
     // Reference card

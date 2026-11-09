@@ -2,6 +2,7 @@
 
 ## Latest session
 - Date/model: 2026-11-09 / Claude 3.5 Sonnet / Antigravity Agent
+- Milestone: Forensic QA, Real-Browser Testing & Independent Audit Complete
 
 ## Done
 - M0 Foundation completed:
@@ -37,21 +38,29 @@
 - M6 Documentation & Security completed:
   - Authored `docs/THREAT.md`, `docs/FAILURE.md`, `docs/DATA.md`, `docs/ROLLBACK.md` with exact file:line citations.
   - Updated `README.md` with honest claims, results tables, architecture, reproduction instructions, and citations.
-  - Total test suite: 57 tests passing (`pytest -v`).
+- Forensic QA Audit & Release Validation completed:
+  - Executed real headless Google Chrome (v142.0.x) browser tests across desktop and mobile viewports.
+  - Captured 5 genuine screenshots in `docs/screenshots/`.
+  - Authored hard backend test suite (`tests/test_hard_backend.py`, 15 tests).
+  - Authored security adversarial test suite (`tests/test_security_adversarial.py`, 7 tests).
+  - Authored audio/metric adversarial test suite (`tests/test_audio_metric_adversarial.py`, 10 tests).
+  - Corrected defects: `DEF-001` (XSS detail escaping), `DEF-002` (Starlette 413 constant), `DEF-003` (DOM `#error-banner` replacing `alert()`), `DEF-004` (audio duration calculation).
+  - Authored `docs/FORENSIC_QA_REPORT.md`, `docs/BROWSER_TEST_REPORT.md`, `docs/SECURITY_TEST_REPORT.md`, `docs/BENCHMARK_PROVENANCE_AUDIT.md`, and `docs/CLAUDE_HANDOFF.md`.
+  - Total automated test suite: **89 passed in 10.47s**, 0 failed, 0 warnings.
+  - Zero live Gnani API calls were made or charged.
 
 ## In progress
-- Independent Engineering Audit and Release Validation.
+- None (All development, test, browser verification, and audit milestones completed).
 
 ## Broken or risky
-- Live API calls require user's live Gnani credentials and explicit `go`. Offline/mock benchmark is fully reproducible.
+- Live provider benchmark numbers in `tests/results.md` reflect offline deterministic mock baseline; live API benchmarking is gated awaiting user credentials and explicit `go`.
 
 ## Next
-- Complete independent engineering audit, adversarial evaluation, and produce final release audit report.
-
-
+1. Review final audit report and screenshots in `docs/`.
+2. Present application and audit findings for The Great Indian Internship Challenge.
+3. (Optional) Provide live Gnani credentials to run live Gate G1 probe (`python scripts/usage_probe.py --live`).
 
 ## Do not touch
 - `.env` and all secret values.
 - `../calllens-data` or any existing user data/cache.
 - Never stage datasets, audio, cache, local databases, or secrets.
-
