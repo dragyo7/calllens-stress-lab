@@ -1,57 +1,65 @@
-# CallLens Stress Lab
-### Reproducible Speech Recognition Telephony Benchmarking & Interactive Testing Platform
+# CallLens — Speech Intelligence & Telephony Evaluation Platform
+### Unified Indic Speech Workstation, WebSocket Live Playground & Telephony Stress Benchmarking
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Tests: 100 Passing](https://img.shields.io/badge/tests-100%20passed-brightgreen.svg)]()
+[![Tests: 113 Passing](https://img.shields.io/badge/tests-113%20passed-brightgreen.svg)]()
 [![Safety Cap: Enforced](https://img.shields.io/badge/safety--cap-enforced-orange.svg)]()
 [![Provenance: Isolated](https://img.shields.io/badge/provenance-isolated-blueviolet.svg)]()
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 
-> **Notice & Scope Clarification:** CallLens Stress Lab evaluates automatic speech recognition (ASR) robustness using **read speech (FLEURS Hindi `hi_in`)** and **synthetic TTS speech (Gnani Timbre v2.5)** under simulated acoustic degradation (telephony bandpass 300–3400 Hz, 8 kHz G.711 &mu;-law companding, and calibrated Gaussian noise). **Simulated telephony on read speech is not identical to production call-center audio**, which features spontaneous speaker disfluencies, overlapping crosstalk, acoustic reverberation, and bursty packet loss. Benchmark metrics must be interpreted strictly within these controlled experimental parameters.
+> **Notice & Scope Clarification:** CallLens evaluates automatic speech recognition (ASR) robustness using **read speech (FLEURS Hindi `hi_in`)** and **synthetic TTS speech (Gnani Timbre v2.5)** under simulated acoustic degradation (telephony bandpass 300–3400 Hz, 8 kHz G.711 &mu;-law companding, and calibrated Gaussian noise). **Simulated telephony on read speech is not identical to production call-center audio**, which features spontaneous speaker disfluencies, overlapping crosstalk, acoustic reverberation, and bursty packet loss. Benchmark metrics must be interpreted strictly within these controlled experimental parameters.
 
 ---
 
 ## 1. Executive Summary
 
-**CallLens Stress Lab** is an end-to-end speech recognition benchmarking platform and interactive evaluation laboratory built for **The Great Indian Internship Challenge by Gnani.ai**.
+**CallLens** is a unified Indic Speech Intelligence Platform and empirical telephony evaluation laboratory built for **The Great Indian Internship Challenge by Gnani.ai**.
 
-The platform performs an independent head-to-head empirical comparison between:
-- **Gnani Prisma v2.5** (Production baseline ASR)
-- **Gnani Prisma v3.0** (Next-generation multilingual ASR)
-
-Speech recognition performance on Hindi is systematically stress-tested across four standardized acoustic conditions:
-1. `clean`: Original normalized 16 kHz studio-quality audio.
-2. `tel`: Bandpass 300–3400 Hz (8th-order Butterworth) &rarr; 8 kHz downsampling &rarr; G.711 &mu;-law 8-bit companding &rarr; 16 kHz reconstruction (ITU-T G.712/G.711 compliant).
-3. `tel_snr10`: 10 dB SNR calibrated Gaussian noise + Telephony degradation chain.
-4. `tel_snr0`: 0 dB SNR calibrated Gaussian noise + Telephony degradation chain.
-
-In addition to core phonetic accuracy (WER, CER), CallLens measures downstream business impact on banking interactions through an automated **BFSI Entity Extraction Engine** (extracting Indian Rupee amounts and repayment due dates from Hinglish dialogues) and quantifies **Hallucination Rates** on non-speech inputs.
+The platform provides an end-to-end speech engineering suite integrating:
+1. **Speech-to-Text (STT) Studio:** Audio file uploads (&le; 5 MB), live browser microphone recording with real-time Web Audio API waveform visualization, preloaded benchmark clips, 10 Indic languages, format selector (verbatim, ITN transcribe, codemix), and one-click transcript copy/download.
+2. **Text-to-Speech (TTS) Studio:** Natural voice synthesis powered by the official Gnani Timbre v2.5 catalog (42 Indic voices, highlighting verified flagship Hindi male `Pranav` and female `Kaveri`), dynamic speaking rates (0.85x–1.15x), banking & OTP quick templates, audio player with waveform preview, and WAV downloads.
+3. **Live Speech Playground (WebSocket Gateway):** High-performance bidirectional streaming session gateway over `/ws/speech` capturing microphone audio chunks in real time, emitting transparent lifecycle events (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`), and executing atomic transcription and voice feedback with complete architectural honesty (zero fabricated streaming illusions).
+4. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls.
+5. **Audio History & Audit Log:** Persistent, audit-ready SQLite ledger of all STT transcriptions and TTS voice generations, tracking timestamps, model/voice IDs, latencies, preview text, and execution statuses.
 
 ---
 
-## 2. Interactive Web Application
+## 2. Interactive Platform Showcase
 
-The interactive web dashboard provides side-by-side model comparison, real-time audio waveform/spectrogram review, simulated degradation controls, and instant replay of recorded benchmark runs.
+The dark-themed Linear/Vercel/Stripe-inspired interface provides 9 dedicated views, numerical keyboard navigation shortcuts (`[1]` to `[9]`), and a built-in Raycast command palette (`⌘K` or `/`).
 
-### Desktop Dashboard View (1440 &times; 900)
+### Overview Dashboard (1440 &times; 900)
+Unified speech AI overview with live KPI metric cards, Word Error Rate comparisons, latency trade-offs, and an enterprise deployment recommendation matrix.
 ![CallLens Desktop Dashboard](docs/screenshots/dashboard_1440x900.png)
 
+### Speech-to-Text (STT) Studio
+Transcribe custom audio files, live microphone speech, or preloaded clips with Gnani Prisma v2.5 or v3.0, displaying real-time waveforms and processing latencies.
+![Speech-to-Text Studio](docs/screenshots/stt_studio.png)
+
+### Text-to-Speech (TTS) Studio
+Synthesize natural Indic speech with 42 Timbre voices, adjustable speaking speed, prebuilt BFSI reminders, interactive audio player, and instant WAV download.
+![Text-to-Speech Studio](docs/screenshots/tts_studio.png)
+
+### Live Speech Playground (WebSocket Gateway)
+Bidirectional streaming gateway capturing live microphone chunks and emitting structured lifecycle events.
+![Live Playground](docs/screenshots/live_playground.png)
+
+### Telephony Stress Lab & Model Comparison
+Empirical side-by-side head-to-head comparison between Prisma v2.5 and v3.0 across clean studio audio, ITU-T G.712 telephony, and 0 dB SNR severe noise regimes.
+![Telephony Stress Lab](docs/screenshots/side_by_side_comparison.png)
+
 ### Model Comparison Matrix & Bootstrap Confidence Intervals
+Fine-grained statistical evaluation with 95% clip-level bootstrap confidence intervals (1,000 resamples) and Character Error Rate (CER) comparisons.
 ![Model Comparison View](docs/screenshots/model_comparison_view.png)
 
-### BFSI Banking Evaluation & Downstream Entity Extraction
-![BFSI Evaluation View](docs/screenshots/bfsi_evaluation_view.png)
+### Audio Audit History Log
+Persistent SQLite audit trail of all speech recognition and voice synthesis requests.
+![Audio History Log](docs/screenshots/audio_history.png)
 
-### Failures & Diagnostic Telemetry Center
-![Failures & Diagnostics View](docs/screenshots/failures_diagnostics_view.png)
-
-### Mobile & Responsive View (390 &times; 844)
+### Responsive Mobile Interface (390 &times; 844)
+Full platform access on modern mobile and tablet viewports with slide-out navigation.
 <img src="docs/screenshots/mobile_390x844.png" width="380" alt="CallLens Mobile Dashboard" />
-
-### Zero-State Live Replay Mode
-When launched against a clean database, the UI defaults to replaying stored live results and clearly indicates zero recorded live calls rather than silently substituting mock fixtures:
-![No Live Results Recorded State](docs/screenshots/no_live_results_state.png)
 
 ---
 
@@ -59,22 +67,25 @@ When launched against a clean database, the UI defaults to replaying stored live
 
 ```mermaid
 flowchart TD
-    subgraph UI_Layer ["Interactive Client Layer"]
-        UI["Web Dashboard\n(HTML5 / CSS3 / Vanilla JS)"]
-        AudioIn["Audio Player & Visualizer\n(Web Audio API)"]
+    subgraph UI_Layer ["Interactive Client Layer (Web Audio API & UI)"]
+        UI["Web Dashboard & Studios\n(HTML5 / CSS3 / Vanilla JS)"]
+        WSClient["WebSocket Streaming Client\n(250ms Audio Chunk Slices)"]
+        AudioVis["Real-Time Waveform Visualizer\n(Web Audio AnalyserNode)"]
     end
 
     subgraph API_Layer ["Backend Gateway (FastAPI)"]
-        Server["FastAPI REST API\n(app/main.py)"]
-        RateLimit["Endpoint Rate Limiter\n(10 req/min/IP)"]
-        Validator["WAV File Validator\n(Magic Bytes, 16kHz, Mono, <= 10MB)"]
+        Server["FastAPI REST & WebSocket Gateway\n(app/main.py)"]
+        STTEndpoint["POST /api/stt/transcribe\n(File Upload, Mic, Preloaded Clips)"]
+        TTSEndpoint["POST /api/tts/synthesize\n(42 Timbre Voices, WAV Download)"]
+        WSEndpoint["WebSocket /ws/speech\n(Lifecycle Events & Chunk Buffer)"]
+        HistoryDB["GET & DELETE /api/history\n(Persistent SQLite Audit Trail)"]
     end
 
     subgraph Gateway_Layer ["Centralized Provider Gateway"]
         Client["Gnani Client Gateway\n(calllens/gnani_client.py)"]
-        CapGuard["Dead Man's Switch\n(Hard MAX_LIVE_CALLS Cap)"]
+        CapGuard["Dead Man's Switch\n(Persistent 434-Call Safety Ceiling)"]
         CacheStore["SHA-256 Disk Cache\n(Content-Addressable Storage)"]
-        TokenBucket["Concurrency & Rate Limiter\n(Token Bucket + Semaphore)"]
+        TokenBucket["Concurrency Rate Limiter\n(Token Bucket + Semaphore: max 2)"]
         SecretFilter["Token Sanitizer\n(Zero Secrets in Logs/Errors)"]
     end
 
@@ -95,20 +106,23 @@ flowchart TD
 
     subgraph Persistence ["Storage Layer"]
         DB[(SQLite benchmark.db\nStrict Provenance Tagging)]
-        MockDB[(benchmark_mock.db\nIsolated Test Fixtures)]
+        HistTable[(SQLite audio_history\nAudit Records & Latency Logs)]
     end
 
     subgraph External_APIs ["Gnani Speech AI Platform"]
         Prisma25["Prisma v2.5 STT"]
         Prisma30["Prisma v3.0 STT"]
-        Timbre25["Timbre v2.5 TTS\n(Pranav hi-IN)"]
+        Timbre25["Timbre v2.5 TTS\n(42 Indic Voices)"]
     end
 
     UI --> Server
-    AudioIn --> Server
-    Server --> RateLimit --> Validator
+    WSClient --> WSEndpoint
+    AudioVis --> UI
+    Server --> STTEndpoint --> Client
+    Server --> TTSEndpoint --> Client
+    Server --> WSEndpoint --> Client
+    Server --> HistoryDB --> HistTable
     Server --> Runner
-    Server --> Client
 
     RawAudio --> BP --> Resample8k --> MuLaw --> NoiseInject --> Reconstruct
     Runner --> Audio_Pipeline
@@ -138,7 +152,7 @@ flowchart TD
 *Evaluates 30 standardized read-speech clips (duration &le; 28s) across 4 acoustic conditions with normalized Hindi ground truth.*
 
 | Model | Acoustic Condition | N | Mean WER | 95% Bootstrap CI | Mean CER | P50 Latency | P95 Latency | Mean RTF |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Prisma v2.5** | `clean` | 30 | **0.0818** | [0.0549, 0.1161] | 0.0296 | 0.194s | 0.293s | 0.021 |
 | **Prisma v2.5** | `tel` | 30 | **0.0820** | [0.0549, 0.1153] | 0.0282 | 0.197s | 0.301s | 0.022 |
 | **Prisma v2.5** | `tel_snr10` | 30 | **0.1132** | [0.0703, 0.1680] | 0.0510 | 0.179s | 0.292s | 0.020 |
@@ -172,42 +186,20 @@ flowchart TD
 
 ---
 
-## 5. Visualizations `[LIVE DATA]`
+## 5. Enterprise Deployment Decision Matrix
 
-### Word Error Rate across Telephony Degradation Conditions
-![WER by Condition](docs/wer_by_condition.png)
+Based on 360 verified empirical evaluations, CallLens establishes concrete architectural rules for production deployment:
 
-### Accuracy vs. Latency Trade-off
-![WER vs Latency](docs/wer_vs_latency.png)
-
----
-
-## 6. Engineering & Architectural Highlights
-
-### 1. Centralized Provider Gateway (`calllens/gnani_client.py`)
-- **Single Chokepoint:** Every network request to Gnani STT or TTS services must traverse `calllens/gnani_client.py::call`. Direct SDK imports outside this module are prohibited.
-- **Dead Man's Switch:** Enforces a process-wide `MAX_LIVE_CALLS` counter. Once reached, requests raise `LiveCallLimitExceeded` immediately to prevent runaway API spending.
-- **Content-Addressable Cache:** Audio files and request parameters are hashed using SHA-256. Subsequent identical requests resolve in sub-millisecond local disk time without provider credit cost.
-- **In-flight Request Coalescing:** Simultaneous identical requests share a single execution promise, preventing redundant network duplicate calls.
-- **Token Bucket Rate Limiter:** Smooths outbound traffic against API bursting limits.
-
-### 2. Standardized Telephony Degradation Chain (`calllens/degrade.py`)
-- Standardized implementation of ITU-T telephony transmission characteristics:
-  - 8th-order Butterworth bandpass filter (300 Hz – 3400 Hz cutoff).
-  - Downsampling to 8 kHz Nyquist telephony bandwidth.
-  - Non-linear 8-bit $\mu$-law quantization (G.711 specification).
-  - Reconstruction to 16 kHz mono float32 for clean model ingestion.
-- Calibrated additive Gaussian noise injected at exact target Signal-to-Noise Ratios (10 dB SNR and 0 dB SNR).
-
-### 3. BFSI Entity Extraction Engine (`calllens/extract.py`)
-- Independent domain-specific rule and regular expression engine designed for Hinglish collection calls:
-  - Extracts payment amounts across Western digits (`5000`), Devanagari numerals (`५०००`), words (`paanch hazaar`, `पांच हजार`), and mixed notations (`5k`, `5 hazar`).
-  - Identifies repayment due dates (e.g., `15 tarikh`, `kal tak`, `somwar ko`, `15th`).
-  - Evaluates joint accuracy to measure the true downstream business impact of ASR errors.
+| Enterprise Production Scenario | Recommended Model | Empirical Justification |
+| :--- | :--- | :--- |
+| **Clean Audio / Mobile Apps / Web IVR** | **Prisma v3.0** | Leads by **+1.53% absolute WER** (6.65% vs 8.18%) with lowest Character Error Rate (**2.45% CER**). |
+| **Conversational Hinglish & Banking Debt Collection** | **Prisma v3.0** | Leads by **+8.36% absolute WER** (31.60% vs 39.96%) on conversational code-mixed Indian English vocabulary. |
+| **High-Noise Telephony (0 dB – 10 dB SNR)** | **Prisma v2.5** | Superior noise resilience (**18.92% vs 25.82% WER** at 0 dB SNR) with lower word omission rates. |
+| **Strict Low-Latency Edge Telephony** | **Prisma v2.5** | Consistently lower P50 latency (**194ms vs 214ms**) across telephony pipelines. |
 
 ---
 
-## 7. Repository Structure
+## 6. Repository Structure
 
 ```
 calllens/
@@ -217,23 +209,26 @@ calllens/
 │   ├── degrade.py              # Butterworth filtering, mu-law companding, SNR calibration
 │   ├── metrics.py              # WER, CER, 95% bootstrap confidence intervals, RTF
 │   ├── extract.py              # BFSI banking entity extractor (amounts, due dates)
+│   ├── history.py              # SQLite audit trail & audio history persistence
 │   └── benchmark.py            # SQLite benchmark orchestrator & report generator
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI service (rate limits, validation, replay endpoint)
+│   ├── main.py                 # FastAPI service (STT, TTS, WebSockets, history, replay)
 │   └── static/
-│       ├── index.html          # Semantic HTML5 accessible dashboard UI
-│       ├── styles.css          # Dark-mode responsive design system
-│       └── app.js              # State manager, waveform visualizer, audio player
+│       ├── index.html          # Semantic HTML5 accessible dashboard UI (9 views)
+│       ├── styles.css          # Dark-mode responsive design system (Linear/Vercel)
+│       └── app.js              # State manager, waveform visualizer, audio player, WebSockets
 ├── scripts/
 │   ├── __init__.py
 │   ├── usage_probe.py          # Gate G1 4-call diagnostic probe
 │   ├── format_pilot.py         # Gate G2 format & encoding pilot
 │   ├── get_fleurs.py           # FLEURS Hindi dataset downloader & safe extractor
 │   ├── gen_noise.py            # Exp D synthetic noise/silence generator
-│   └── gen_utterances.py       # Exp F synthetic BFSI utterance generator
+│   ├── gen_utterances.py       # Exp F synthetic BFSI utterance generator
+│   └── capture_screenshots.ps1 # Multi-viewport browser screenshot capture suite
 ├── tests/
 │   ├── test_app.py             # FastAPI API endpoint & security tests
+│   ├── test_speech_platform.py # STT, TTS, audio serving, history & WebSocket tests
 │   ├── test_audio_metric_adversarial.py # Adversarial audio & NaN metric tests
 │   ├── test_audit_robustness.py# Clean DB startup, missing key, & cache tests
 │   ├── test_benchmark_provenance_isolation.py # Provenance isolation verification
@@ -262,16 +257,17 @@ calllens/
 ├── .env.example                # Safe environment configuration template
 ├── .gitignore                  # Strict exclusion rules (secrets, venv, data, DBs)
 ├── requirements.txt            # Pinned, audited dependencies
+├── SOLUTION_PITCH.md           # 1-page evaluator pitch & business impact summary
 └── README.md                   # Project documentation & presentation
 ```
 
 ---
 
-## 8. Quickstart & Reproduction Guide
+## 7. Quickstart & Reproduction Guide
 
 ### Prerequisites
 - Python 3.10+ (tested on Python 3.12.10, Windows 11 / Linux / macOS)
-- Standard audio drivers (for optional browser playback)
+- Standard audio drivers (for browser playback & microphone capture)
 
 ### 1. Environment Setup
 ```bash
@@ -309,43 +305,25 @@ APP_PORT=8000
 ```
 > **Security Notice:** `.env` is strictly ignored by Git (`git check-ignore .env`). Never commit API keys or secret credentials.
 
-### 3. Run the Verification Suite (100 Tests)
-Verify the entire codebase, audio pipeline, client gateway, and security assertions offline without making any live API calls:
+### 3. Run the Verification Suite (113 Tests)
+Verify the entire codebase, speech platform endpoints, WebSocket gateways, audio pipeline, and security assertions offline without making any live API calls:
 ```bash
 pytest -q
 ```
 Expected output:
 ```text
-100 passed in 7.95s
+113 passed in 7.41s
 ```
 
-### 4. Launch the Interactive Stress Lab
+### 4. Launch the Speech Intelligence Platform
 ```bash
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in any modern browser.
 
-### 5. Benchmark Execution & Gating Flow
-CallLens enforces a multi-gate safety protocol for live API execution:
-```bash
-# Gate G1: 4-call diagnostic probe (v2.5 vs v3.0 on 2 FLEURS clips)
-python scripts/usage_probe.py --live
-
-# Gate G2: 10-call format pilot & BFSI synthesis
-python scripts/format_pilot.py --live
-python scripts/gen_utterances.py --live
-
-# Gate G3: Dry-run verification (zero network calls)
-python calllens/benchmark.py --dry-run
-
-# Gate G3: Scaled live benchmark (10% scale or full 100%)
-python calllens/benchmark.py --scale 0.1
-python calllens/benchmark.py --scale 1.0
-```
-
 ---
 
-## 9. Security & Repository Hygiene Audit
+## 8. Security & Repository Hygiene Audit
 
 | Security Domain | Control Implementation | Audit Status |
 | :--- | :--- | :---: |
@@ -354,12 +332,12 @@ python calllens/benchmark.py --scale 1.0
 | **API Cost Protection** | Hard `MAX_LIVE_CALLS` dead man's switch raises exception if budget is exceeded | **Verified Clean** |
 | **Data Hygiene** | All audio files, caches, and SQLite databases stored outside repo (`../calllens-data`) | **Verified Clean** |
 | **Supply Chain Safety** | Zero usage of `load_dataset`, `trust_remote_code`, or unpinned packages | **Verified Clean** |
-| **Input Validation** | Strict 10MB size cap, 16 kHz mono WAV validation, magic-byte checking | **Verified Clean** |
+| **Input Validation** | Strict 5MB/10MB size caps, audio duration validation, regex path traversal guards | **Verified Clean** |
 | **DoS Mitigation** | Token bucket rate limiting (10 req/min/IP on API endpoints) | **Verified Clean** |
 
 ---
 
-## 10. Citations & Attribution
+## 9. Citations & Attribution
 
 - **FLEURS Hindi (`hi_in`) Dataset:**
   - Conneau, A., et al. (2022). *FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech*. arXiv:2205.12446.

@@ -16,21 +16,23 @@ Security Controls:
 from __future__ import annotations
 
 import base64
+import hashlib
 import html
 import io
 import json
-
 import logging
 import os
+import re
 import sys
 import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+import uuid
 import numpy as np
 import soundfile as sf
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -39,7 +41,7 @@ from pydantic import BaseModel, Field
 # Add repository root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from calllens import degrade, extract, gnani_client, metrics
+from calllens import degrade, extract, gnani_client, history, metrics
 from calllens.benchmark import BenchmarkResult, get_db_session
 from calllens.gnani_client import accounting
 
@@ -76,6 +78,25 @@ class StressRequest(BaseModel):
     live: int = Field(default=0, description="1 for live API call, 0 for replay of recorded live runs")
     audio_base64: str | None = Field(default=None, description="Optional raw audio base64 encoded")
     allow_mock: bool | None = Field(default=None, description="Allow mock fixture fallback (test-only)")
+
+
+class STTRequest(BaseModel):
+    clip_id: str | None = Field(default=None, description="Clip ID from preloaded dataset")
+    audio_base64: str | None = Field(default=None, description="Base64 encoded audio bytes")
+    model: str = Field(default="prisma-v2.5", description="Prisma v2.5 or prisma-v3.0")
+    language_code: str = Field(default="hi-IN", description="BCP-47 language code")
+    format: str = Field(default="verbatim", description="verbatim, transcribe, or codemix")
+    live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
+    mock_transcript: str | None = Field(default=None, description="Optional mock transcript for testing")
+
+
+class TTSRequest(BaseModel):
+    text: str = Field(..., description="Text to synthesize into speech")
+    voice: str = Field(default="Pranav", description="Voice identifier (e.g. Pranav, Kaveri, Ishaan)")
+    model: str = Field(default="timbre-v2.5", description="TTS model (timbre-v2.5 or timbre-v2.0)")
+    language: str = Field(default="hi-IN", description="Language code")
+    speed: float = Field(default=1.0, description="Speaking rate (0.85 to 1.15)")
+    live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
 
 
 def check_rate_limit(client_ip: str) -> None:
@@ -671,3 +692,543 @@ async def run_stress_test(request: Request):
             "due_day": gt_due_day,
         } if (gt_amount or gt_due_day) else None,
     }
+
+
+# ---------------------------------------------------------
+# STT Studio API Endpoints
+# ---------------------------------------------------------
+
+@app.post("/api/stt/transcribe")
+async def transcribe_speech(
+    request: Request,
+    file: UploadFile | None = File(None),
+    model: str = Form("prisma-v2.5"),
+    language_code: str = Form("hi-IN"),
+    format: str = Form("verbatim"),
+    live: int = Form(0),
+    clip_id: str | None = Form(None),
+    mock_transcript: str | None = Form(None),
+):
+    """Transcribes uploaded, recorded, or preloaded audio using Gnani STT.
+
+    Accepts both multipart/form-data and application/json requests.
+    Enforces upload constraints: <= 5 MB, <= 30 seconds audio duration.
+    """
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    check_rate_limit(client_ip)
+
+    content_type = request.headers.get("content-type", "")
+    audio_bytes: bytes | None = None
+    input_label = "Uploaded Audio"
+
+    # Handle application/json payloads
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            stt_req = STTRequest(**body)
+            model = stt_req.model
+            language_code = stt_req.language_code
+            format = stt_req.format
+            live = stt_req.live
+            clip_id = stt_req.clip_id
+            mock_transcript = stt_req.mock_transcript
+            if stt_req.audio_base64:
+                audio_bytes = base64.b64decode(stt_req.audio_base64)
+                input_label = "Base64 Audio Stream"
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON request: {exc}")
+
+    # Handle file uploads
+    elif file is not None and file.filename:
+        audio_bytes = await file.read()
+        input_label = file.filename
+
+    # Handle clip_id lookup
+    data_dir = get_data_dir()
+    if clip_id and not audio_bytes:
+        found_path = None
+        # Check processed_audio clean or raw
+        for candidate in [
+            data_dir / "processed_audio" / f"{clip_id}_clean.wav",
+            data_dir / "processed_audio" / f"{clip_id}.wav",
+            data_dir / "bfsi" / f"{clip_id}.wav",
+            data_dir / "noise_silence" / f"{clip_id}.wav",
+            data_dir / "bfsi_mock" / f"{clip_id}.wav",
+        ]:
+            if candidate.exists():
+                found_path = candidate
+                break
+
+        if not found_path:
+            # Check fleurs manifest
+            fleurs_manifest = data_dir / "fleurs" / "manifest.json"
+            if fleurs_manifest.exists():
+                try:
+                    with open(fleurs_manifest, "r", encoding="utf-8") as f:
+                        for item in json.load(f):
+                            if item["clip_id"] == clip_id:
+                                p = data_dir / "fleurs" / "audio" / item["source_filename"]
+                                if p.exists():
+                                    found_path = p
+                                    break
+                except Exception:
+                    pass
+
+        if not found_path:
+            raise HTTPException(status_code=404, detail=f"Clip ID '{clip_id}' not found")
+        audio_bytes = found_path.read_bytes()
+        input_label = f"Preloaded Clip ({clip_id})"
+
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="No audio provided. Please upload a file, record speech, or select a clip.")
+
+    if len(audio_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Audio file exceeds maximum upload size of {MAX_UPLOAD_BYTES / (1024*1024):.0f} MB.",
+        )
+
+    # Validate audio decoding and duration
+    try:
+        with io.BytesIO(audio_bytes) as bio:
+            audio_arr, sr = sf.read(bio, dtype="float32")
+            duration_sec = len(audio_arr) / float(sr)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid or corrupt audio file: {exc}")
+
+    if duration_sec <= 0:
+        raise HTTPException(status_code=400, detail="Audio file contains 0 audio samples.")
+
+    if duration_sec > MAX_AUDIO_DURATION_SEC:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Audio duration ({duration_sec:.1f}s) exceeds the 30-second limit.",
+        )
+
+    # Write to temporary file for SDK consumption
+    temp_dir = data_dir / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    temp_audio_file = temp_dir / f"stt_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}.wav"
+    with open(temp_audio_file, "wb") as f:
+        f.write(audio_bytes)
+
+    start_time = time.perf_counter()
+    is_live = bool(live)
+
+    payload = {
+        "audio": temp_audio_file,
+        "language_code": language_code,
+        "model": model,
+        "format": format,
+    }
+    if mock_transcript:
+        payload["mock_transcript"] = mock_transcript
+
+    try:
+        res = gnani_client.call("stt", payload, live=is_live, use_cache=True)
+        elapsed = time.perf_counter() - start_time
+    except Exception as exc:
+        logger.error("STT transcription failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {exc}")
+    finally:
+        try:
+            if temp_audio_file.exists():
+                temp_audio_file.unlink()
+        except Exception:
+            pass
+
+    transcript = res.get("transcript", "")
+    word_count = len(transcript.strip().split()) if transcript.strip() else 0
+    char_count = len(transcript)
+
+    # Record into audit history
+    hist_id = history.record_stt_history(
+        model=res.get("model", model),
+        language=language_code,
+        format=format,
+        duration_sec=duration_sec,
+        latency_sec=elapsed,
+        input_name=input_label,
+        transcript=transcript,
+        status="completed",
+        metadata={
+            "words": word_count,
+            "chars": char_count,
+            "mock": res.get("mock", not is_live),
+            "from_cache": res.get("from_cache", False),
+        },
+    )
+
+    return {
+        "success": True,
+        "request_id": res.get("request_id", f"req-{uuid.uuid4().hex[:8]}"),
+        "transcript": transcript,
+        "model": model,
+        "provider_model": res.get("model", model),
+        "language_code": language_code,
+        "format": format,
+        "duration_sec": round(duration_sec, 2),
+        "latency_sec": round(res.get("end_to_end_latency", elapsed), 3),
+        "word_count": word_count,
+        "char_count": char_count,
+        "from_cache": res.get("from_cache", False),
+        "mock": res.get("mock", not is_live),
+        "history_id": hist_id,
+    }
+
+
+# ---------------------------------------------------------
+# TTS Studio API Endpoints
+# ---------------------------------------------------------
+
+@app.post("/api/tts/synthesize")
+async def synthesize_speech(req: TTSRequest, request: Request):
+    """Synthesizes text into high-fidelity speech using Gnani Timbre."""
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    check_rate_limit(client_ip)
+
+    clean_text = req.text.strip()
+    if not clean_text:
+        raise HTTPException(status_code=400, detail="Text cannot be empty.")
+
+    if len(clean_text) > 2000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Text length ({len(clean_text)} chars) exceeds maximum limit of 2,000 characters.",
+        )
+
+    if req.speed < 0.5 or req.speed > 2.0:
+        raise HTTPException(status_code=400, detail="Speed must be between 0.5 and 2.0.")
+
+    data_dir = get_data_dir()
+    temp_dir = data_dir / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    is_live = bool(req.live)
+    start_time = time.perf_counter()
+
+    payload = {
+        "text": clean_text,
+        "voice": req.voice,
+        "model": req.model,
+        "language": req.language,
+        "speed": req.speed,
+    }
+
+    try:
+        audio_bytes = gnani_client.call("tts", payload, live=is_live, use_cache=True)
+        elapsed = time.perf_counter() - start_time
+    except Exception as exc:
+        logger.error("TTS synthesis failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Synthesis failed: {exc}")
+
+    try:
+        with io.BytesIO(audio_bytes) as bio:
+            info = sf.info(bio)
+            duration_sec = info.duration
+    except Exception:
+        duration_sec = len(clean_text) * 0.08
+
+    filename = f"tts_{hashlib.md5(f'{clean_text}_{req.voice}_{req.language}_{req.speed}'.encode()).hexdigest()[:16]}.wav"
+    audio_file_path = temp_dir / filename
+    with open(audio_file_path, "wb") as f:
+        f.write(audio_bytes)
+
+    hist_id = history.record_tts_history(
+        model=req.model,
+        language=req.language,
+        voice=req.voice,
+        text=clean_text,
+        duration_sec=duration_sec,
+        latency_sec=elapsed,
+        audio_filename=filename,
+        status="completed",
+        metadata={
+            "speed": req.speed,
+            "mock": not is_live,
+            "char_count": len(clean_text),
+        },
+    )
+
+    return {
+        "success": True,
+        "audio_url": f"/api/tts/audio/{filename}",
+        "filename": filename,
+        "audio_base64": base64.b64encode(audio_bytes).decode("utf-8"),
+        "text": clean_text,
+        "voice": req.voice,
+        "model": req.model,
+        "language": req.language,
+        "speed": req.speed,
+        "duration_sec": round(duration_sec, 2),
+        "char_count": len(clean_text),
+        "latency_sec": round(elapsed, 3),
+        "mock": not is_live,
+        "history_id": hist_id,
+    }
+
+
+@app.get("/api/tts/audio/{filename}")
+def serve_tts_audio(filename: str):
+    """Serves synthesized TTS audio files."""
+    if not re.match(r"^tts_[a-zA-Z0-9_-]+\.wav$", filename):
+        raise HTTPException(status_code=400, detail="Invalid audio filename format.")
+
+    data_dir = get_data_dir()
+    audio_path = data_dir / "temp" / filename
+    if not audio_path.exists():
+        raise HTTPException(status_code=404, detail="Audio file not found or expired.")
+
+    return FileResponse(audio_path, media_type="audio/wav")
+
+
+@app.get("/api/tts/voices")
+def get_supported_voices():
+    """Returns catalog of supported Gnani Timbre voices with recommendations."""
+    return {
+        "voices": [
+            {"id": "Pranav", "name": "Pranav", "gender": "Male", "language": "Hindi / Hinglish", "recommended": True, "description": "Flagship Hindi male conversational voice. Verified in benchmark experiments."},
+            {"id": "Kaveri", "name": "Kaveri", "gender": "Female", "language": "Hindi / Indic", "recommended": True, "description": "Expressive female conversational voice for customer service."},
+            {"id": "Ishaan", "name": "Ishaan", "gender": "Male", "language": "Hindi", "recommended": False, "description": "Youthful male voice, clear for educational dialogues."},
+            {"id": "Devika", "name": "Devika", "gender": "Female", "language": "Hindi / Indic", "recommended": False, "description": "Authoritative corporate female persona."},
+            {"id": "Lavanya", "name": "Lavanya", "gender": "Female", "language": "Hindi / Indic", "recommended": False, "description": "Gentle, polite female persona for notification prompts."},
+            {"id": "Deepak", "name": "Deepak", "gender": "Male", "language": "Hindi", "recommended": False, "description": "Formal male voice for announcements and disclosures."},
+            {"id": "Trisha", "name": "Trisha", "gender": "Female", "language": "Hindi", "recommended": False, "description": "Conversational female voice for banking inquiries."},
+        ]
+    }
+
+
+# ---------------------------------------------------------
+# Audit History Endpoints
+# ---------------------------------------------------------
+
+@app.get("/api/history")
+def get_audit_history(limit: int = 50, kind: str | None = None):
+    """Returns persistent audit log of recent STT and TTS speech operations."""
+    records = history.get_recent_history(limit=min(100, max(1, limit)), kind=kind)
+    return {"history": records}
+
+
+@app.delete("/api/history")
+def clear_audit_history():
+    """Clears history records (for test isolation and privacy reset)."""
+    count = history.clear_history()
+    return {"success": True, "deleted_count": count}
+
+
+# ---------------------------------------------------------
+# Live Speech WebSocket Session Controller
+# ---------------------------------------------------------
+
+@app.websocket("/ws/speech")
+async def speech_websocket_endpoint(websocket: WebSocket):
+    """Application-level WebSocket endpoint managing interactive speech recording,
+
+    chunked audio transport, event lifecycle, atomic STT transcription, and TTS generation.
+    """
+    await websocket.accept()
+    session_id = f"sess_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+    logger.info("[WebSocket] Client connected: %s", session_id)
+
+    # Initial session confirmation
+    await websocket.send_json({
+        "type": "session_started",
+        "session_id": session_id,
+        "timestamp": time.time(),
+        "provider_note": "Gnani Prisma STT operates via atomic HTTP REST gateway. CallLens buffers real-time audio chunks via WebSocket for lossless transcription.",
+    })
+
+    audio_buffer = bytearray()
+    active_config = {
+        "model": "prisma-v2.5",
+        "language_code": "hi-IN",
+        "format": "verbatim",
+        "live": 0,
+    }
+
+    data_dir = get_data_dir()
+    temp_dir = data_dir / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        while True:
+            msg = await websocket.receive()
+
+            # Handle binary audio chunks (MediaRecorder streaming)
+            if "bytes" in msg and msg["bytes"]:
+                chunk = msg["bytes"]
+                if len(audio_buffer) + len(chunk) > MAX_UPLOAD_BYTES:
+                    await websocket.send_json({
+                        "type": "operation_failed",
+                        "error": f"Buffer limit exceeded ({MAX_UPLOAD_BYTES / (1024*1024):.0f} MB max). Resetting stream.",
+                    })
+                    audio_buffer.clear()
+                    continue
+
+                audio_buffer.extend(chunk)
+                await websocket.send_json({
+                    "type": "audio_chunk_received",
+                    "bytes_received": len(chunk),
+                    "total_bytes": len(audio_buffer),
+                })
+
+            # Handle JSON control commands
+            elif "text" in msg and msg["text"]:
+                try:
+                    payload = json.loads(msg["text"])
+                except Exception:
+                    await websocket.send_json({
+                        "type": "operation_failed",
+                        "error": "Malformed JSON text payload received.",
+                    })
+                    continue
+
+                action = payload.get("action")
+
+                if action == "start_session":
+                    active_config["model"] = payload.get("model", "prisma-v2.5")
+                    active_config["language_code"] = payload.get("language_code", "hi-IN")
+                    active_config["format"] = payload.get("format", "verbatim")
+                    active_config["live"] = int(payload.get("live", 0))
+                    audio_buffer.clear()
+                    await websocket.send_json({
+                        "type": "session_configured",
+                        "config": active_config,
+                    })
+
+                elif action == "finish_recording":
+                    if not audio_buffer:
+                        await websocket.send_json({
+                            "type": "operation_failed",
+                            "error": "Audio buffer is empty. Record audio before submitting.",
+                        })
+                        continue
+
+                    await websocket.send_json({
+                        "type": "transcription_started",
+                        "total_bytes": len(audio_buffer),
+                    })
+
+                    # Write buffer to temporary file
+                    tmp_wav = temp_dir / f"live_{session_id}.wav"
+                    tmp_wav.write_bytes(audio_buffer)
+
+                    start_time = time.perf_counter()
+                    try:
+                        with io.BytesIO(audio_buffer) as bio:
+                            audio_arr, sr = sf.read(bio, dtype="float32")
+                            duration_sec = len(audio_arr) / float(sr)
+                    except Exception:
+                        duration_sec = 2.0
+
+                    stt_payload = {
+                        "audio": tmp_wav,
+                        "model": active_config["model"],
+                        "language_code": active_config["language_code"],
+                        "format": active_config["format"],
+                    }
+
+                    try:
+                        is_live = bool(active_config["live"])
+                        res = gnani_client.call("stt", stt_payload, live=is_live, use_cache=True)
+                        elapsed = time.perf_counter() - start_time
+                        transcript = res.get("transcript", "")
+                        words = len(transcript.strip().split()) if transcript.strip() else 0
+
+                        # Record to history
+                        history.record_stt_history(
+                            model=res.get("model", active_config["model"]),
+                            language=active_config["language_code"],
+                            format=active_config["format"],
+                            duration_sec=duration_sec,
+                            latency_sec=elapsed,
+                            input_name=f"Live Microphone ({session_id})",
+                            transcript=transcript,
+                            status="completed",
+                            session_id=session_id,
+                            metadata={"words": words, "mock": res.get("mock", not is_live)},
+                        )
+
+                        await websocket.send_json({
+                            "type": "transcription_completed",
+                            "transcript": transcript,
+                            "model": res.get("model", active_config["model"]),
+                            "duration_sec": round(duration_sec, 2),
+                            "latency_sec": round(elapsed, 3),
+                            "word_count": words,
+                            "mock": res.get("mock", not is_live),
+                        })
+                    except Exception as exc:
+                        await websocket.send_json({
+                            "type": "operation_failed",
+                            "error": f"Transcription error: {exc}",
+                        })
+                    finally:
+                        audio_buffer.clear()
+                        try:
+                            if tmp_wav.exists():
+                                tmp_wav.unlink()
+                        except Exception:
+                            pass
+
+                elif action == "synthesize":
+                    tts_text = payload.get("text", "").strip()
+                    if not tts_text:
+                        await websocket.send_json({
+                            "type": "operation_failed",
+                            "error": "Synthesis text cannot be empty.",
+                        })
+                        continue
+
+                    voice = payload.get("voice", "Pranav")
+                    speed = float(payload.get("speed", 1.0))
+                    is_live = bool(payload.get("live", 0))
+
+                    await websocket.send_json({
+                        "type": "tts_generation_started",
+                        "text": tts_text,
+                        "voice": voice,
+                    })
+
+                    tts_payload = {
+                        "text": tts_text,
+                        "voice": voice,
+                        "model": "timbre-v2.5",
+                        "language": active_config["language_code"],
+                        "speed": speed,
+                    }
+
+                    try:
+                        tts_bytes = gnani_client.call("tts", tts_payload, live=is_live, use_cache=True)
+                        try:
+                            with io.BytesIO(tts_bytes) as bio:
+                                info = sf.info(bio)
+                                tts_dur = info.duration
+                        except Exception:
+                            tts_dur = len(tts_text) * 0.08
+
+                        await websocket.send_json({
+                            "type": "tts_audio_ready",
+                            "audio_base64": base64.b64encode(tts_bytes).decode("utf-8"),
+                            "duration_sec": round(tts_dur, 2),
+                            "voice": voice,
+                            "char_count": len(tts_text),
+                        })
+                    except Exception as exc:
+                        await websocket.send_json({
+                            "type": "operation_failed",
+                            "error": f"TTS synthesis error: {exc}",
+                        })
+
+                elif action == "cancel":
+                    audio_buffer.clear()
+                    await websocket.send_json({
+                        "type": "recording_cancelled",
+                        "message": "Audio buffer cleared and recording stopped.",
+                    })
+
+    except WebSocketDisconnect:
+        logger.info("[WebSocket] Client disconnected: %s", session_id)
+    except Exception as exc:
+        logger.error("[WebSocket] Session error: %s", exc)
+

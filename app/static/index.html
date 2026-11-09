@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CallLens Stress Lab — Enterprise Speech Intelligence & Telephony Benchmarking</title>
-  <meta name="description" content="Empirical benchmarking of Gnani Prisma v2.5 vs Prisma v3.0 under ITU-T G.712 telephony channel degradation, 8 kHz μ-law companding, and calibrated acoustic noise.">
+  <title>CallLens Stress Lab — Speech Intelligence & Telephony Evaluation Platform</title>
+  <meta name="description" content="CallLens Stress Lab: Production Speech-to-Text (STT), Text-to-Speech (TTS), Live WebSocket Playground, and Telephony Stress Benchmarking powered by Gnani Prisma and Timbre.">
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,45 +22,53 @@
         <svg class="cmd-icon" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
           <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
         </svg>
-        <input type="text" id="cmd-input" placeholder="Type a view name or jump to experiment... (e.g. 'overview', 'bfsi', 'robustness')" autocomplete="off" spellcheck="false">
+        <input type="text" id="cmd-input" placeholder="Type a view name or speech tool... (e.g. 'stt', 'tts', 'live', 'stress', 'history')" autocomplete="off" spellcheck="false">
         <span class="cmd-shortcut-tag">ESC to close</span>
       </div>
       <div class="cmd-body" id="cmd-results">
-        <div class="cmd-group-label">Navigation Views</div>
+        <div class="cmd-group-label">Speech Intelligence Platform</div>
         <div class="cmd-item active" data-action="view" data-target="overview">
           <span class="cmd-item-title">1. Overview Dashboard</span>
           <span class="cmd-item-key">1</span>
         </div>
-        <div class="cmd-item" data-action="view" data-target="experiments">
-          <span class="cmd-item-title">2. Experiments Lab (Interactive Replay)</span>
+        <div class="cmd-item" data-action="view" data-target="stt-studio">
+          <span class="cmd-item-title">2. Speech-to-Text Studio (Upload & Mic)</span>
           <span class="cmd-item-key">2</span>
         </div>
-        <div class="cmd-item" data-action="view" data-target="comparison">
-          <span class="cmd-item-title">3. Model Comparison (Prisma v2.5 vs v3.0)</span>
+        <div class="cmd-item" data-action="view" data-target="tts-studio">
+          <span class="cmd-item-title">3. Text-to-Speech Studio (Timbre Synthesis)</span>
           <span class="cmd-item-key">3</span>
         </div>
-        <div class="cmd-item" data-action="view" data-target="robustness">
-          <span class="cmd-item-title">4. Acoustic Robustness (ITU-T G.712 Telephony)</span>
+        <div class="cmd-item" data-action="view" data-target="live-playground">
+          <span class="cmd-item-title">4. Live Playground (WebSocket & Mic)</span>
           <span class="cmd-item-key">4</span>
         </div>
-        <div class="cmd-item" data-action="view" data-target="bfsi">
-          <span class="cmd-item-title">5. BFSI Hinglish Evaluation</span>
+        <div class="cmd-item" data-action="view" data-target="comparison">
+          <span class="cmd-item-title">5. Model Comparison (Prisma v2.5 vs v3.0)</span>
           <span class="cmd-item-key">5</span>
         </div>
-        <div class="cmd-item" data-action="view" data-target="diagnostics">
-          <span class="cmd-item-title">6. Failures & Diagnostic Telemetry</span>
+        <div class="cmd-item" data-action="view" data-target="stress-lab">
+          <span class="cmd-item-title">6. Telephony Stress Lab (Benchmark Replay)</span>
           <span class="cmd-item-key">6</span>
         </div>
-        <div class="cmd-item" data-action="view" data-target="methodology">
-          <span class="cmd-item-title">7. Methodology & Provenance</span>
+        <div class="cmd-item" data-action="view" data-target="history">
+          <span class="cmd-item-title">7. Audio History & Audit Log</span>
           <span class="cmd-item-key">7</span>
+        </div>
+        <div class="cmd-item" data-action="view" data-target="diagnostics">
+          <span class="cmd-item-title">8. Failures & Diagnostics</span>
+          <span class="cmd-item-key">8</span>
+        </div>
+        <div class="cmd-item" data-action="view" data-target="methodology">
+          <span class="cmd-item-title">9. Methodology & Provenance</span>
+          <span class="cmd-item-key">9</span>
         </div>
       </div>
     </div>
   </div>
 
   <div class="app-layout">
-    <!-- Sidebar Navigation (Linear Inspired) -->
+    <!-- Left Sidebar (Linear Style) -->
     <aside class="app-sidebar" id="app-sidebar">
       <div class="sidebar-header">
         <div class="brand-container">
@@ -70,20 +78,20 @@
             </svg>
           </div>
           <div class="brand-meta">
-            <div class="brand-title">CallLens <span class="badge-subtle">LAB</span></div>
-            <div class="brand-desc">Speech AI Telephony Observatory</div>
+            <div class="brand-title">CallLens <span class="badge-subtle">PRO</span></div>
+            <div class="brand-desc">Speech Intelligence Platform</div>
           </div>
         </div>
       </div>
 
-      <!-- Model Switcher Banner -->
+      <!-- Engine Selector Status -->
       <div class="model-badge-card">
         <div class="model-pair">
           <div class="model-chip v25">
             <span class="chip-dot"></span>
             <span class="chip-name">Prisma v2.5</span>
           </div>
-          <span class="vs-divider">VS</span>
+          <span class="vs-divider">&bull;</span>
           <div class="model-chip v30">
             <span class="chip-dot"></span>
             <span class="chip-name">Prisma v3.0</span>
@@ -91,9 +99,10 @@
         </div>
       </div>
 
-      <!-- Navigation Links -->
+      <!-- Navigation Menu -->
       <nav class="sidebar-nav">
-        <div class="nav-section-label">PLATFORM VIEWS</div>
+        <div class="nav-section-label">PLATFORM SUITE</div>
+        
         <button class="nav-item active" data-view="overview" id="nav-btn-overview">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="9" rx="1.5" />
@@ -105,36 +114,54 @@
           <kbd class="nav-kbd">1</kbd>
         </button>
 
-        <button class="nav-item" data-view="experiments" id="nav-btn-experiments">
+        <button class="nav-item" data-view="stt-studio" id="nav-btn-stt-studio">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
-          <span class="nav-text">Experiments Lab</span>
+          <span class="nav-text">Speech to Text</span>
           <kbd class="nav-kbd">2</kbd>
         </button>
+
+        <button class="nav-item" data-view="tts-studio" id="nav-btn-tts-studio">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <span class="nav-text">Text to Speech</span>
+          <kbd class="nav-kbd">3</kbd>
+        </button>
+
+        <button class="nav-item" data-view="live-playground" id="nav-btn-live-playground">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span class="nav-text">Live Playground</span>
+          <kbd class="nav-kbd">4</kbd>
+        </button>
+
+        <div class="nav-section-label">EVALUATION & BENCHMARK</div>
 
         <button class="nav-item" data-view="comparison" id="nav-btn-comparison">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
           <span class="nav-text">Model Comparison</span>
-          <kbd class="nav-kbd">3</kbd>
-        </button>
-
-        <button class="nav-item" data-view="robustness" id="nav-btn-robustness">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          <span class="nav-text">Acoustic Robustness</span>
-          <kbd class="nav-kbd">4</kbd>
-        </button>
-
-        <button class="nav-item" data-view="bfsi" id="nav-btn-bfsi">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span class="nav-text">BFSI Evaluation</span>
           <kbd class="nav-kbd">5</kbd>
+        </button>
+
+        <button class="nav-item" data-view="stress-lab" id="nav-btn-stress-lab">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          </svg>
+          <span class="nav-text">Stress Lab</span>
+          <kbd class="nav-kbd">6</kbd>
+        </button>
+
+        <button class="nav-item" data-view="history" id="nav-btn-history">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="nav-text">Audio History</span>
+          <kbd class="nav-kbd">7</kbd>
         </button>
 
         <button class="nav-item" data-view="diagnostics" id="nav-btn-diagnostics">
@@ -142,7 +169,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <span class="nav-text">Failures & Diagnostics</span>
-          <kbd class="nav-kbd">6</kbd>
+          <kbd class="nav-kbd">8</kbd>
         </button>
 
         <button class="nav-item" data-view="methodology" id="nav-btn-methodology">
@@ -150,19 +177,19 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
           <span class="nav-text">Methodology</span>
-          <kbd class="nav-kbd">7</kbd>
+          <kbd class="nav-kbd">9</kbd>
         </button>
       </nav>
 
-      <!-- Sidebar Footer Status Cards -->
+      <!-- Sidebar Footer -->
       <div class="sidebar-footer">
         <div class="telemetry-card">
           <div class="telemetry-header">
             <span class="pulse-indicator live"></span>
-            <span class="telemetry-title">LIVE BENCHMARK</span>
+            <span class="telemetry-title">GATEWAY ACTIVE</span>
           </div>
           <div class="telemetry-detail">
-            <span id="sidebar-live-count">360</span> evaluations verified in DB
+            <span id="sidebar-live-count">360</span> benchmark records in DB
           </div>
           <div class="attempt-gauge-container">
             <div class="attempt-gauge-header">
@@ -180,12 +207,12 @@
             <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
           </svg>
           <span>dragyo7/calllens-stress-lab</span>
-          <span class="commit-pill">1c59d61</span>
+          <span class="commit-pill">main</span>
         </a>
       </div>
     </aside>
 
-    <!-- Main Viewport -->
+    <!-- Main Content Area -->
     <div class="app-main-viewport">
       <!-- Top Navigation Header -->
       <header class="top-header">
@@ -212,11 +239,11 @@
           </button>
 
           <div class="header-pill-group">
-            <span class="status-pill status-live" id="mode-badge" title="Replaying genuine recorded live runs from SQLite">
+            <span class="status-pill status-live" id="mode-badge" title="Replay of recorded live runs">
               <span class="status-dot"></span> Replay of recorded live runs
             </span>
             <span class="status-pill status-neutral">
-              Hindi India (hi-IN)
+              Prisma v2.5 & v3.0
             </span>
           </div>
         </div>
@@ -228,65 +255,93 @@
         <section class="overview-hero-card">
           <div class="hero-content">
             <div class="hero-badge-row">
-              <span class="hero-tag">The Great Indian Internship Challenge &bull; Gnani.ai</span>
-              <span class="hero-provenance-tag">Certified Live Provenance</span>
+              <span class="hero-tag">Speech Intelligence & Telephony Platform</span>
+              <span class="hero-provenance-tag">Production Ready</span>
             </div>
-            <h1 class="hero-heading">Speech AI Telephony Robustness Observatory</h1>
+            <h1 class="hero-heading">Enterprise Speech Intelligence & Telephony Platform</h1>
             <p class="hero-subtext">
-              An empirical, reproducible benchmarking laboratory evaluating <strong>Gnani Prisma v2.5</strong> (production baseline) versus <strong>Gnani Prisma v3.0</strong> (next-gen multilingual engine) across clean 16 kHz audio and standardized ITU-T G.712 telephony channel degradation.
+              Unified speech AI workstation integrating high-throughput Speech-to-Text (STT), natural Text-to-Speech (TTS), interactive WebSocket playground, and rigorous telephony channel stress benchmarking comparing <strong>Gnani Prisma v2.5</strong> and <strong>Prisma v3.0</strong>.
             </p>
             <div class="hero-actions">
-              <button class="btn btn-primary" onclick="window.switchView('experiments')">
+              <button class="btn btn-primary" onclick="window.switchView('stt-studio')">
                 <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                  <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
                 </svg>
-                Launch Experiments Lab
+                Launch STT Studio
               </button>
-              <button class="btn btn-secondary" onclick="window.switchView('comparison')">
-                View Model Scorecard
+              <button class="btn btn-secondary" onclick="window.switchView('tts-studio')">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd" />
+                </svg>
+                Launch TTS Studio
               </button>
-              <button class="btn btn-ghost" onclick="window.switchView('diagnostics')">
-                Inspect 504 Recovery Logs
+              <button class="btn btn-ghost" onclick="window.switchView('live-playground')">
+                Live Playground
               </button>
             </div>
           </div>
+
           <div class="hero-key-takeaways">
             <div class="takeaway-item">
-              <span class="takeaway-label">Clean Studio Speech (FLEURS)</span>
-              <div class="takeaway-val">Prisma v3.0 Leads</div>
-              <span class="takeaway-sub">6.65% vs 8.18% WER (+1.53% abs gain)</span>
+              <span class="takeaway-label">Speech-to-Text Engines</span>
+              <div class="takeaway-val">Prisma v2.5 & v3.0</div>
+              <span class="takeaway-sub">Verbatim, Transcribe (ITN) & Codemix</span>
             </div>
             <div class="takeaway-item">
-              <span class="takeaway-label">Severe Telephony Noise (0 dB SNR)</span>
-              <div class="takeaway-val">Prisma v2.5 Leads</div>
-              <span class="takeaway-sub">18.92% vs 25.82% WER (+6.90% noise margin)</span>
+              <span class="takeaway-label">Text-to-Speech Engine</span>
+              <div class="takeaway-val">Gnani Timbre v2.5</div>
+              <span class="takeaway-sub">42 voices including Pranav & Kaveri</span>
             </div>
             <div class="takeaway-item">
-              <span class="takeaway-label">BFSI Banking Joint Accuracy</span>
-              <div class="takeaway-val">100% Extraction</div>
-              <span class="takeaway-sub">Clean & standard telephony channel</span>
+              <span class="takeaway-label">Telephony Stress Lab</span>
+              <div class="takeaway-val">360 Benchmark Runs</div>
+              <span class="takeaway-sub">ITU-T G.712 bandpass & 0 dB SNR noise</span>
             </div>
           </div>
         </section>
 
-        <!-- KPI Metric Cards Grid (Vercel/Stripe Inspired) -->
+        <!-- KPI Metric Cards Grid -->
         <section class="kpi-grid">
-          <div class="kpi-card" onclick="window.switchView('experiments')">
+          <div class="kpi-card" onclick="window.switchView('stt-studio')">
             <div class="kpi-header">
-              <span class="kpi-title">Total Live Evaluations</span>
-              <span class="kpi-badge badge-green">100% Stored</span>
+              <span class="kpi-title">Speech-to-Text Studio</span>
+              <span class="kpi-badge badge-blue">Ready</span>
             </div>
-            <div class="kpi-number" id="kpi-total-evals">360</div>
+            <div class="kpi-number">STT Studio</div>
             <div class="kpi-meta">
-              <span class="kpi-detail">338 network calls &bull; 56 cache hits</span>
-              <span class="kpi-trend positive">&check; Zero Lost</span>
+              <span class="kpi-detail">Upload, mic, 10 Indic languages</span>
+              <span class="kpi-trend positive">&rarr; Open Studio</span>
+            </div>
+          </div>
+
+          <div class="kpi-card" onclick="window.switchView('tts-studio')">
+            <div class="kpi-header">
+              <span class="kpi-title">Text-to-Speech Studio</span>
+              <span class="kpi-badge badge-cyan">42 Voices</span>
+            </div>
+            <div class="kpi-number">TTS Studio</div>
+            <div class="kpi-meta">
+              <span class="kpi-detail">Timbre synthesis, audio download</span>
+              <span class="kpi-trend positive">&rarr; Open Studio</span>
+            </div>
+          </div>
+
+          <div class="kpi-card" onclick="window.switchView('live-playground')">
+            <div class="kpi-header">
+              <span class="kpi-title">Live Playground</span>
+              <span class="kpi-badge badge-indigo">WebSocket</span>
+            </div>
+            <div class="kpi-number">Real-Time</div>
+            <div class="kpi-meta">
+              <span class="kpi-detail">Live mic chunking & status events</span>
+              <span class="kpi-trend positive">&rarr; Launch Live</span>
             </div>
           </div>
 
           <div class="kpi-card" onclick="window.switchView('comparison')">
             <div class="kpi-header">
               <span class="kpi-title">Clean Audio WER (v3.0)</span>
-              <span class="kpi-badge badge-blue">Baseline</span>
+              <span class="kpi-badge badge-green">Baseline</span>
             </div>
             <div class="kpi-number" id="kpi-clean-wer">6.65%</div>
             <div class="kpi-meta">
@@ -295,51 +350,27 @@
             </div>
           </div>
 
-          <div class="kpi-card" onclick="window.switchView('robustness')">
+          <div class="kpi-card" onclick="window.switchView('stress-lab')">
             <div class="kpi-header">
-              <span class="kpi-title">Telephony Bandpass WER (v3.0)</span>
-              <span class="kpi-badge badge-indigo">G.712 Chain</span>
-            </div>
-            <div class="kpi-number" id="kpi-tel-wer">7.84%</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">300–3400 Hz &bull; 8kHz &mu;-law</span>
-              <span class="kpi-trend positive">+0.36% vs v2.5</span>
-            </div>
-          </div>
-
-          <div class="kpi-card" onclick="window.switchView('robustness')">
-            <div class="kpi-header">
-              <span class="kpi-title">Extreme Noise WER (v2.5)</span>
+              <span class="kpi-title">Severe Noise WER (v2.5)</span>
               <span class="kpi-badge badge-amber">0 dB SNR</span>
             </div>
             <div class="kpi-number" id="kpi-noise-wer">18.92%</div>
             <div class="kpi-meta">
-              <span class="kpi-detail">v2.5 noise resilience</span>
+              <span class="kpi-detail">v2.5 telephony noise resilience</span>
               <span class="kpi-trend positive">+6.90% vs v3.0</span>
             </div>
           </div>
 
-          <div class="kpi-card" onclick="window.switchView('comparison')">
+          <div class="kpi-card" onclick="window.switchView('history')">
             <div class="kpi-header">
-              <span class="kpi-title">P50 Processing Latency</span>
-              <span class="kpi-badge badge-cyan">Ultra Real-Time</span>
+              <span class="kpi-title">Audio Audit History</span>
+              <span class="kpi-badge badge-subtle">SQLite</span>
             </div>
-            <div class="kpi-number" id="kpi-p50-lat">194 ms</div>
+            <div class="kpi-number" id="kpi-history-count">-</div>
             <div class="kpi-meta">
-              <span class="kpi-detail">RTF = 0.021 (v2.5) / 0.022 (v3.0)</span>
-              <span class="kpi-trend neutral">&approx; 50x Real-time</span>
-            </div>
-          </div>
-
-          <div class="kpi-card" onclick="window.switchView('bfsi')">
-            <div class="kpi-header">
-              <span class="kpi-title">BFSI Entity Joint Accuracy</span>
-              <span class="kpi-badge badge-green">10 Hinglish Scenarios</span>
-            </div>
-            <div class="kpi-number" id="kpi-bfsi-acc">100%</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">Amount & due-date exact match</span>
-              <span class="kpi-trend positive">Clean & Tel</span>
+              <span class="kpi-detail">Recent STT and TTS logs</span>
+              <span class="kpi-trend neutral">&rarr; View Audit Trail</span>
             </div>
           </div>
         </section>
@@ -379,7 +410,7 @@
         <section class="decision-matrix-card">
           <div class="section-title-row">
             <h3>Enterprise Production Recommendation Matrix</h3>
-            <span class="badge-subtle">Deployment Strategy</span>
+            <span class="badge-subtle">Model Architecture Selection</span>
           </div>
           <div class="recommendation-grid">
             <div class="recommendation-box v30-box">
@@ -409,19 +440,426 @@
         </section>
       </main>
 
-      <!-- VIEW 2: EXPERIMENTS LAB (INTERACTIVE REPLAY & TESTING) -->
-      <main class="view-panel hidden" id="view-experiments">
+      <!-- VIEW 2: SPEECH-TO-TEXT STUDIO -->
+      <main class="view-panel hidden" id="view-stt-studio">
         <div class="panel-header-block">
           <div>
-            <h2>Experiments Lab & Live Replay</h2>
-            <p class="panel-subtext">Select pre-loaded benchmark clips or upload custom audio to evaluate Hindi speech recognition and downstream BFSI entity extraction.</p>
-          </div>
-          <div class="panel-header-badges">
-            <span class="badge-subtle">Mode: Instant Replay of Live Runs</span>
+            <h2>Speech-to-Text Studio</h2>
+            <p class="panel-subtext">Transcribe audio files, live microphone speech, or preloaded benchmark clips using Gnani Prisma v2.5 or v3.0.</p>
           </div>
         </div>
 
-        <!-- Controls Section -->
+        <section class="card">
+          <!-- Input Mode Switcher -->
+          <div class="studio-tab-bar">
+            <button class="studio-tab active" data-stt-mode="upload" id="stt-tab-upload">Upload Audio File</button>
+            <button class="studio-tab" data-stt-mode="mic" id="stt-tab-mic">Microphone Recording</button>
+            <button class="studio-tab" data-stt-mode="clip" id="stt-tab-clip">Preloaded Benchmark Clip</button>
+          </div>
+
+          <form id="stt-studio-form">
+            <!-- Mode 1: File Upload -->
+            <div class="stt-input-mode" id="stt-mode-upload">
+              <div class="form-group">
+                <label>Upload Audio File (WAV, MP3, OGG, FLAC &le; 5 MB, &le; 30 sec):</label>
+                <div class="file-upload-wrapper drop-zone" id="stt-drop-zone">
+                  <input type="file" id="stt-file-input" accept=".wav,.mp3,.ogg,.flac" class="form-control-file">
+                  <div class="drop-zone-prompt">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span>Drag and drop an audio file here or click to browse</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mode 2: Microphone Recording -->
+            <div class="stt-input-mode hidden" id="stt-mode-mic">
+              <div class="mic-recorder-card">
+                <div class="mic-controls-row">
+                  <button type="button" class="btn btn-record" id="stt-btn-mic-toggle">
+                    <span class="mic-record-dot"></span>
+                    <span id="stt-mic-status-text">Start Recording</span>
+                  </button>
+                  <div class="mic-timer font-mono" id="stt-mic-timer">00:00</div>
+                </div>
+                <div class="waveform-container">
+                  <canvas id="stt-mic-canvas" width="600" height="70"></canvas>
+                </div>
+                <div class="mic-preview-wrapper hidden" id="stt-mic-preview-box">
+                  <span>Recorded Audio Preview:</span>
+                  <audio id="stt-mic-audio-preview" controls class="custom-audio-player"></audio>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mode 3: Preloaded Clip -->
+            <div class="stt-input-mode hidden" id="stt-mode-clip">
+              <div class="form-group">
+                <label for="stt-clip-select">Select Demonstration Clip:</label>
+                <select id="stt-clip-select" class="form-control">
+                  <option value="">-- Choose a pre-loaded speech clip --</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Configuration Grid -->
+            <div class="form-row-grid">
+              <div class="form-col">
+                <div class="form-group">
+                  <label for="stt-model-select">Speech Recognition Model:</label>
+                  <select id="stt-model-select" class="form-control">
+                    <option value="prisma-v2.5" selected>Gnani Prisma v2.5 (Production Baseline)</option>
+                    <option value="prisma-v3.0">Gnani Prisma v3.0 (Multilingual Engine)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-col">
+                <div class="form-group">
+                  <label for="stt-lang-select">Language Code:</label>
+                  <select id="stt-lang-select" class="form-control">
+                    <option value="hi-IN" selected>Hindi (hi-IN)</option>
+                    <option value="en-IN">English India (en-IN)</option>
+                    <option value="ta-IN">Tamil (ta-IN)</option>
+                    <option value="te-IN">Telugu (te-IN)</option>
+                    <option value="kn-IN">Kannada (kn-IN)</option>
+                    <option value="gu-IN">Gujarati (gu-IN)</option>
+                    <option value="mr-IN">Marathi (mr-IN)</option>
+                    <option value="bn-IN">Bengali (bn-IN)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row-grid">
+              <div class="form-col">
+                <div class="form-group">
+                  <label for="stt-format-select">Transcription Format:</label>
+                  <select id="stt-format-select" class="form-control">
+                    <option value="verbatim" selected>Verbatim (Raw spoken phonetic words)</option>
+                    <option value="transcribe">Transcribe (Inverse Text Normalization: numbers, currency, dates)</option>
+                    <option value="codemix">Codemix (Keep English words in Latin script)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-col">
+                <div class="form-group">
+                  <label>Mode / Execution Engine:</label>
+                  <div class="radio-card inline-radio-card">
+                    <label class="radio-label">
+                      <input type="radio" name="stt_live" value="0" checked>
+                      <span>Cached / Replay / Safe Mode</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions-row">
+              <button type="submit" id="stt-btn-submit" class="btn btn-primary btn-lg">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                </svg>
+                Transcribe Audio
+              </button>
+              <div id="stt-loader" class="loader-container hidden">
+                <span class="spinner"></span>
+                <span>Transcribing with Gnani Prisma...</span>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <!-- STT Studio Output Card -->
+        <section id="stt-output-card" class="card hidden">
+          <div class="card-header">
+            <div>
+              <h3>Transcription Output</h3>
+              <span class="ref-meta-text" id="stt-output-meta">Prisma Model Output</span>
+            </div>
+            <div class="header-pill-group">
+              <button class="btn btn-secondary" onclick="window.copyText('stt-output-text')">Copy Text</button>
+              <button class="btn btn-secondary" id="stt-btn-download-txt">Download .TXT</button>
+            </div>
+          </div>
+
+          <div class="metrics-row">
+            <div class="metric">
+              <span class="metric-label">Model</span>
+              <span class="metric-value font-mono" id="stt-stat-model">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Processing Latency</span>
+              <span class="metric-value font-mono" id="stt-stat-lat">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Word Count</span>
+              <span class="metric-value font-mono" id="stt-stat-words">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Duration</span>
+              <span class="metric-value font-mono" id="stt-stat-dur">-</span>
+            </div>
+          </div>
+
+          <p id="stt-output-text" class="transcript-box" style="min-height: 120px;"></p>
+        </section>
+      </main>
+
+      <!-- VIEW 3: TEXT-TO-SPEECH STUDIO -->
+      <main class="view-panel hidden" id="view-tts-studio">
+        <div class="panel-header-block">
+          <div>
+            <h2>Text-to-Speech Studio</h2>
+            <p class="panel-subtext">Synthesize natural Hindi and Hinglish speech using the official Gnani Timbre v2.5 voice catalog.</p>
+          </div>
+        </div>
+
+        <section class="card">
+          <form id="tts-studio-form">
+            <!-- Sample Templates -->
+            <div class="form-group">
+              <label>Quick Templates (Click to insert):</label>
+              <div class="template-pills-row">
+                <button type="button" class="btn-template" data-text="नमस्ते राहुल शर्मा जी, आपका क्रेडिट कार्ड बिल ₹ 50,000 है जो 5 तारीख तक देय है।">Banking EMI Reminder</button>
+                <button type="button" class="btn-template" data-text="सुरक्षा के लिए अपना वन टाइम पासवर्ड किसी के साथ साझा न करें। वैध समय 10 मिनट है।">OTP Security Alert</button>
+                <button type="button" class="btn-template" data-text="कॉललेंस स्पीच इंटेलिजेंस लैब में आपका स्वागत है। हम हिंदी भाषा में ध्वनि परीक्षण कर रहे हैं।">Platform Greeting</button>
+                <button type="button" class="btn-template" data-text="आपका व्यक्तिगत ऋण 2.25 lakh स्वीकृत हो चुका है। कृपया दस्तावेज सत्यापित करें।">Hinglish Loan Approval</button>
+              </div>
+            </div>
+
+            <!-- Text Editor -->
+            <div class="form-group">
+              <div class="section-label-row">
+                <label for="tts-text-input">Speech Text Input:</label>
+                <span class="font-mono text-muted" id="tts-char-counter">0 / 2,000 chars</span>
+              </div>
+              <textarea id="tts-text-input" class="form-control" rows="4" placeholder="Enter Hindi or Hinglish text to synthesize into speech..."></textarea>
+            </div>
+
+            <!-- Configuration Grid -->
+            <div class="form-row-grid">
+              <div class="form-col">
+                <div class="form-group">
+                  <label for="tts-voice-select">Timbre Voice (Catalog):</label>
+                  <select id="tts-voice-select" class="form-control">
+                    <option value="Pranav" selected>Pranav (Male • Hindi / Hinglish • Verified Recommended)</option>
+                    <option value="Kaveri">Kaveri (Female • Hindi / Indic • Expressive)</option>
+                    <option value="Ishaan">Ishaan (Male • Hindi • Clear Educational)</option>
+                    <option value="Devika">Devika (Female • Hindi • Professional)</option>
+                    <option value="Lavanya">Lavanya (Female • Hindi • Gentle Prompts)</option>
+                    <option value="Deepak">Deepak (Male • Hindi • Formal Announcement)</option>
+                    <option value="Trisha">Trisha (Female • Hindi • Conversational Banking)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-col">
+                <div class="form-group">
+                  <div class="section-label-row">
+                    <label for="tts-speed-slider">Speaking Rate (Speed):</label>
+                    <span class="font-mono" id="tts-speed-val">1.00x</span>
+                  </div>
+                  <input type="range" id="tts-speed-slider" min="0.85" max="1.15" step="0.05" value="1.0" class="speed-slider">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions-row">
+              <button type="submit" id="tts-btn-submit" class="btn btn-primary btn-lg">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                </svg>
+                Synthesize Speech
+              </button>
+              <div id="tts-loader" class="loader-container hidden">
+                <span class="spinner"></span>
+                <span>Synthesizing voice with Timbre...</span>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <!-- TTS Output Player Card -->
+        <section id="tts-output-card" class="card hidden">
+          <div class="card-header">
+            <div>
+              <h3>Synthesized Audio Output</h3>
+              <span class="ref-meta-text" id="tts-output-meta">Gnani Timbre v2.5 Synthesis</span>
+            </div>
+            <a id="tts-btn-download-wav" class="btn btn-secondary" download="synthesized_speech.wav">
+              <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+              Download WAV Audio
+            </a>
+          </div>
+
+          <div class="metrics-row">
+            <div class="metric">
+              <span class="metric-label">Voice</span>
+              <span class="metric-value font-mono" id="tts-stat-voice">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Audio Duration</span>
+              <span class="metric-value font-mono" id="tts-stat-dur">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Generation Latency</span>
+              <span class="metric-value font-mono" id="tts-stat-lat">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Character Count</span>
+              <span class="metric-value font-mono" id="tts-stat-chars">-</span>
+            </div>
+          </div>
+
+          <!-- Audio Player Bar -->
+          <div class="audio-player-wrapper">
+            <audio id="tts-audio-player" controls class="custom-audio-player" style="width: 100%;"></audio>
+          </div>
+        </section>
+      </main>
+
+      <!-- VIEW 4: LIVE PLAYGROUND (WEBSOCKET & MIC) -->
+      <main class="view-panel hidden" id="view-live-playground">
+        <div class="panel-header-block">
+          <div>
+            <h2>Live Speech Playground</h2>
+            <p class="panel-subtext">Interactive session gateway demonstrating bidirectional speech capture, chunked streaming, and lifecycle events.</p>
+          </div>
+          <div class="header-pill-group">
+            <span class="status-pill status-live" id="ws-status-badge">
+              <span class="status-dot"></span> WebSocket Connected
+            </span>
+          </div>
+        </div>
+
+        <!-- Truthful Provider Notice -->
+        <div class="evaluator-notice">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+          <div>
+            <strong>Architecture & Truthfulness Transparency:</strong> The official Gnani Prisma STT provider API operates via atomic HTTP REST (sub-200ms batch). The CallLens Live Playground provides a genuine application-level WebSocket gateway that streams real-time microphone audio chunks, emits structured lifecycle events, and performs atomic transcription and voice synthesis with zero fabricated streaming illusions.
+          </div>
+        </div>
+
+        <section class="card">
+          <div class="mic-recorder-card">
+            <div class="mic-controls-row">
+              <button type="button" class="btn btn-record" id="live-btn-record">
+                <span class="mic-record-dot"></span>
+                <span id="live-record-status">Record Audio Stream</span>
+              </button>
+              <div class="mic-timer font-mono" id="live-mic-timer">00:00</div>
+              <div class="live-buffer-stats font-mono text-muted">
+                Buffer: <span id="live-buffer-bytes">0 KB</span> / 5 MB
+              </div>
+            </div>
+            <div class="waveform-container">
+              <canvas id="live-mic-canvas" width="600" height="70"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Live Terminal Event Log & Transcript -->
+        <div class="dashboard-charts-grid">
+          <div class="chart-panel">
+            <div class="chart-panel-header">
+              <h3 class="chart-panel-title">WebSocket Lifecycle Event Stream</h3>
+              <button class="btn btn-ghost" id="live-btn-clear-events">Clear Log</button>
+            </div>
+            <div class="terminal-box" id="live-events-terminal">
+              <div class="terminal-line"><span class="term-time">[System]</span> Initializing speech WebSocket session...</div>
+            </div>
+          </div>
+
+          <div class="chart-panel">
+            <div class="chart-panel-header">
+              <h3 class="chart-panel-title">Live Transcript & Audio Feedback</h3>
+              <span class="badge-subtle">Atomic Output</span>
+            </div>
+            <div class="live-transcript-container">
+              <p id="live-transcript-box" class="transcript-box" style="height: 180px; overflow-y: auto;">Speak into microphone and stop recording to transcribe...</p>
+              <div class="audio-feedback-wrapper" id="live-audio-feedback" style="margin-top: 12px;">
+                <audio id="live-audio-player" controls class="custom-audio-player" style="width: 100%; display: none;"></audio>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- VIEW 5: MODEL COMPARISON -->
+      <main class="view-panel hidden" id="view-comparison">
+        <div class="panel-header-block">
+          <div>
+            <h2>Model Comparison: Prisma v2.5 vs Prisma v3.0</h2>
+            <p class="panel-subtext">Direct empirical head-to-head evaluation across 8 operational and accuracy dimensions.</p>
+          </div>
+        </div>
+
+        <section class="card comparison-table-card">
+          <div class="card-header">
+            <h3>Full Head-to-Head Benchmark Matrix (FLEURS Hindi hi-IN)</h3>
+            <span class="badge-subtle">95% Clip-Level Bootstrap CI (1,000 resamples)</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="comparison-data-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Acoustic Condition</th>
+                  <th>N</th>
+                  <th>Mean WER</th>
+                  <th>95% Bootstrap CI</th>
+                  <th>Mean CER</th>
+                  <th>P50 Latency</th>
+                  <th>P95 Latency</th>
+                  <th>Mean RTF</th>
+                  <th>Delta / Lead</th>
+                </tr>
+              </thead>
+              <tbody id="comparison-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="dashboard-charts-grid">
+          <div class="chart-panel">
+            <div class="chart-panel-header">
+              <h3 class="chart-panel-title">Bootstrap Confidence Intervals (WER)</h3>
+              <p class="chart-panel-subtitle">Mean WER with lower and upper 95% bootstrap bounds</p>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="ci-comparison-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-panel">
+            <div class="chart-panel-header">
+              <h3 class="chart-panel-title">Character Error Rate (CER) Comparison</h3>
+              <p class="chart-panel-subtitle">Fine-grained phonetic character alignment</p>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="cer-comparison-chart"></canvas>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- VIEW 6: TELEPHONY STRESS LAB (PRESERVED BENCHMARK REPLAY) -->
+      <main class="view-panel hidden" id="view-stress-lab">
+        <div class="panel-header-block">
+          <div>
+            <h2>Telephony Stress Lab (Benchmark Replay)</h2>
+            <p class="panel-subtext">Simulate ITU-T G.712 telephone degradation (300–3400 Hz, 8kHz &mu;-law, 0 dB SNR) and replay stored live runs.</p>
+          </div>
+        </div>
+
         <section class="card controls-card">
           <form id="stress-form">
             <div id="error-banner" class="error-banner hidden" role="alert"></div>
@@ -446,50 +884,34 @@
               </div>
             </div>
 
-            <!-- Acoustic Condition Selection -->
             <div class="form-group">
               <label>2. Telephony Acoustic Condition (ITU-T G.712 Calibrated):</label>
               <div class="condition-grid">
                 <label class="radio-label">
                   <input type="radio" name="condition" value="clean" checked>
                   <div class="radio-card">
-                    <div class="rc-header">
-                      <strong>Clean</strong>
-                      <span class="rc-badge">16 kHz</span>
-                    </div>
+                    <div class="rc-header"><strong>Clean</strong><span class="rc-badge">16 kHz</span></div>
                     <span class="rc-desc">Studio-quality uncompressed audio baseline.</span>
                   </div>
                 </label>
-
                 <label class="radio-label">
                   <input type="radio" name="condition" value="tel">
                   <div class="radio-card">
-                    <div class="rc-header">
-                      <strong>Telephony (tel)</strong>
-                      <span class="rc-badge">ITU-T G.712</span>
-                    </div>
+                    <div class="rc-header"><strong>Telephony (tel)</strong><span class="rc-badge">ITU-T G.712</span></div>
                     <span class="rc-desc">300–3400 Hz Butterworth bandpass, 8 kHz, 8-bit &mu;-law.</span>
                   </div>
                 </label>
-
                 <label class="radio-label">
                   <input type="radio" name="condition" value="tel_snr10">
                   <div class="radio-card">
-                    <div class="rc-header">
-                      <strong>Tel + 10 dB SNR</strong>
-                      <span class="rc-badge">Moderate</span>
-                    </div>
+                    <div class="rc-header"><strong>Tel + 10 dB SNR</strong><span class="rc-badge">Moderate</span></div>
                     <span class="rc-desc">Telephony filter chain + calibrated Gaussian noise.</span>
                   </div>
                 </label>
-
                 <label class="radio-label">
                   <input type="radio" name="condition" value="tel_snr0">
                   <div class="radio-card">
-                    <div class="rc-header">
-                      <strong>Tel + 0 dB SNR</strong>
-                      <span class="rc-badge badge-danger">Severe</span>
-                    </div>
+                    <div class="rc-header"><strong>Tel + 0 dB SNR</strong><span class="rc-badge badge-danger">Severe</span></div>
                     <span class="rc-desc">Severe equal-power noise (0 dB SNR) telephony channel.</span>
                   </div>
                 </label>
@@ -511,15 +933,14 @@
           </form>
         </section>
 
-        <!-- Audio Player & Ground Truth Reference Transcript -->
+        <!-- Audio Player & Reference Card -->
         <section id="reference-card" class="card reference-card hidden">
           <div class="ref-card-header">
             <div>
               <h3>Ground Truth Reference & Audio Playback</h3>
               <span class="ref-meta-text" id="ref-clip-meta">Normalized Hindi Transcript</span>
             </div>
-            <!-- Audio Player Widget -->
-            <div class="audio-player-wrapper" id="audio-player-box">
+            <div class="audio-player-wrapper">
               <audio id="clip-audio-player" controls preload="none" class="custom-audio-player"></audio>
             </div>
           </div>
@@ -531,7 +952,7 @@
           </div>
         </section>
 
-        <!-- Results Grid (Side-by-Side Model Comparison) -->
+        <!-- Side-by-Side Results -->
         <section id="results-section" class="results-grid hidden">
           <!-- Prisma v2.5 Card -->
           <div class="card result-card" id="card-v25">
@@ -543,18 +964,9 @@
               <span class="badge badge-cache" id="v25-cache-badge">Recorded Live</span>
             </div>
             <div class="metrics-row">
-              <div class="metric">
-                <span class="metric-label">Word Error Rate</span>
-                <span class="metric-value font-mono" id="v25-wer">-</span>
-              </div>
-              <div class="metric">
-                <span class="metric-label">Char Error Rate</span>
-                <span class="metric-value font-mono" id="v25-cer">-</span>
-              </div>
-              <div class="metric">
-                <span class="metric-label">Response Latency</span>
-                <span class="metric-value font-mono" id="v25-lat">-</span>
-              </div>
+              <div class="metric"><span class="metric-label">WER</span><span class="metric-value font-mono" id="v25-wer">-</span></div>
+              <div class="metric"><span class="metric-label">CER</span><span class="metric-value font-mono" id="v25-cer">-</span></div>
+              <div class="metric"><span class="metric-label">Latency</span><span class="metric-value font-mono" id="v25-lat">-</span></div>
             </div>
             <div class="transcript-section">
               <div class="section-label-row">
@@ -566,16 +978,8 @@
             <div id="v25-entities" class="entity-section">
               <h4>Extracted BFSI Entities</h4>
               <div class="entity-pills-row">
-                <div class="entity-pill">
-                  <span class="ep-label">Amount:</span>
-                  <strong class="font-mono" id="v25-amt">-</strong>
-                  <span id="v25-amt-status" class="ep-status"></span>
-                </div>
-                <div class="entity-pill">
-                  <span class="ep-label">Due Day:</span>
-                  <strong class="font-mono" id="v25-day">-</strong>
-                  <span id="v25-day-status" class="ep-status"></span>
-                </div>
+                <div class="entity-pill"><span class="ep-label">Amount:</span><strong class="font-mono" id="v25-amt">-</strong><span id="v25-amt-status" class="ep-status"></span></div>
+                <div class="entity-pill"><span class="ep-label">Due Day:</span><strong class="font-mono" id="v25-day">-</strong><span id="v25-day-status" class="ep-status"></span></div>
               </div>
             </div>
           </div>
@@ -590,18 +994,9 @@
               <span class="badge badge-cache" id="v30-cache-badge">Recorded Live</span>
             </div>
             <div class="metrics-row">
-              <div class="metric">
-                <span class="metric-label">Word Error Rate</span>
-                <span class="metric-value font-mono" id="v30-wer">-</span>
-              </div>
-              <div class="metric">
-                <span class="metric-label">Char Error Rate</span>
-                <span class="metric-value font-mono" id="v30-cer">-</span>
-              </div>
-              <div class="metric">
-                <span class="metric-label">Response Latency</span>
-                <span class="metric-value font-mono" id="v30-lat">-</span>
-              </div>
+              <div class="metric"><span class="metric-label">WER</span><span class="metric-value font-mono" id="v30-wer">-</span></div>
+              <div class="metric"><span class="metric-label">CER</span><span class="metric-value font-mono" id="v30-cer">-</span></div>
+              <div class="metric"><span class="metric-label">Latency</span><span class="metric-value font-mono" id="v30-lat">-</span></div>
             </div>
             <div class="transcript-section">
               <div class="section-label-row">
@@ -613,287 +1008,52 @@
             <div id="v30-entities" class="entity-section">
               <h4>Extracted BFSI Entities</h4>
               <div class="entity-pills-row">
-                <div class="entity-pill">
-                  <span class="ep-label">Amount:</span>
-                  <strong class="font-mono" id="v30-amt">-</strong>
-                  <span id="v30-amt-status" class="ep-status"></span>
-                </div>
-                <div class="entity-pill">
-                  <span class="ep-label">Due Day:</span>
-                  <strong class="font-mono" id="v30-day">-</strong>
-                  <span id="v30-day-status" class="ep-status"></span>
-                </div>
+                <div class="entity-pill"><span class="ep-label">Amount:</span><strong class="font-mono" id="v30-amt">-</strong><span id="v30-amt-status" class="ep-status"></span></div>
+                <div class="entity-pill"><span class="ep-label">Due Day:</span><strong class="font-mono" id="v30-day">-</strong><span id="v30-day-status" class="ep-status"></span></div>
               </div>
             </div>
           </div>
         </section>
       </main>
 
-      <!-- VIEW 3: MODEL COMPARISON -->
-      <main class="view-panel hidden" id="view-comparison">
+      <!-- VIEW 7: AUDIO HISTORY -->
+      <main class="view-panel hidden" id="view-history">
         <div class="panel-header-block">
           <div>
-            <h2>Model Comparison: Prisma v2.5 vs Prisma v3.0</h2>
-            <p class="panel-subtext">Direct empirical head-to-head evaluation across 8 operational and accuracy dimensions.</p>
+            <h2>Audio History & Audit Log</h2>
+            <p class="panel-subtext">Persistent record of Speech-to-Text transcriptions and Text-to-Speech synthesis operations.</p>
+          </div>
+          <div class="header-pill-group">
+            <button class="btn btn-secondary" id="history-btn-refresh">Refresh History</button>
+            <button class="btn btn-ghost" id="history-btn-clear">Clear History</button>
           </div>
         </div>
 
-        <!-- Comparative Scorecard -->
-        <section class="card comparison-table-card">
-          <div class="card-header">
-            <h3>Full Head-to-Head Benchmark Matrix (FLEURS Hindi hi-IN)</h3>
-            <span class="badge-subtle">95% Clip-Level Bootstrap CI (1,000 resamples)</span>
-          </div>
-          <div class="table-responsive">
-            <table class="data-table" id="comparison-data-table">
-              <thead>
-                <tr>
-                  <th>Model</th>
-                  <th>Acoustic Condition</th>
-                  <th>N</th>
-                  <th>Mean WER</th>
-                  <th>95% Bootstrap CI</th>
-                  <th>Mean CER</th>
-                  <th>P50 Latency</th>
-                  <th>P95 Latency</th>
-                  <th>Mean RTF</th>
-                  <th>Delta / Lead</th>
-                </tr>
-              </thead>
-              <tbody id="comparison-table-body">
-                <!-- Injected via JavaScript from summary API -->
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- Charts Comparison Row -->
-        <section class="dashboard-charts-grid">
-          <div class="chart-panel">
-            <div class="chart-panel-header">
-              <div>
-                <h3 class="chart-panel-title">Bootstrap Confidence Intervals (WER)</h3>
-                <p class="chart-panel-subtitle">Mean WER with lower and upper 95% bootstrap bounds</p>
-              </div>
-            </div>
-            <div class="chart-wrapper">
-              <canvas id="ci-comparison-chart"></canvas>
-            </div>
-          </div>
-
-          <div class="chart-panel">
-            <div class="chart-panel-header">
-              <div>
-                <h3 class="chart-panel-title">Character Error Rate (CER) Comparison</h3>
-                <p class="chart-panel-subtitle">Fine-grained phonetic character alignment</p>
-              </div>
-            </div>
-            <div class="chart-wrapper">
-              <canvas id="cer-comparison-chart"></canvas>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <!-- VIEW 4: ACOUSTIC ROBUSTNESS -->
-      <main class="view-panel hidden" id="view-robustness">
-        <div class="panel-header-block">
-          <div>
-            <h2>Acoustic Telephony Robustness Explorer</h2>
-            <p class="panel-subtext">Analyzing how speech recognition accuracy degrades across the calibrated ITU-T G.712 physical channel simulation.</p>
-          </div>
-        </div>
-
-        <!-- DSP Architecture Card -->
-        <section class="card dsp-card">
-          <h3>ITU-T Telephony Channel Degradation Pipeline</h3>
-          <p class="dsp-desc">Standard studio speech does not represent Indian telephone networks. CallLens implements a strict 5-stage DSP signal chain:</p>
-          <div class="dsp-pipeline-visual">
-            <div class="dsp-step">
-              <div class="dsp-step-num">01</div>
-              <div class="dsp-step-title">Input Signal</div>
-              <div class="dsp-step-sub">16 kHz PCM Mono</div>
-            </div>
-            <div class="dsp-arrow">&rarr;</div>
-            <div class="dsp-step">
-              <div class="dsp-step-num">02</div>
-              <div class="dsp-step-title">Butterworth Filter</div>
-              <div class="dsp-step-sub">300–3400 Hz Bandpass</div>
-            </div>
-            <div class="dsp-arrow">&rarr;</div>
-            <div class="dsp-step">
-              <div class="dsp-step-num">03</div>
-              <div class="dsp-step-title">Downsample</div>
-              <div class="dsp-step-sub">8 kHz Telephony Rate</div>
-            </div>
-            <div class="dsp-arrow">&rarr;</div>
-            <div class="dsp-step">
-              <div class="dsp-step-num">04</div>
-              <div class="dsp-step-title">&mu;-law Companding</div>
-              <div class="dsp-step-sub">8-bit G.711 Quantization</div>
-            </div>
-            <div class="dsp-arrow">&rarr;</div>
-            <div class="dsp-step">
-              <div class="dsp-step-num">05</div>
-              <div class="dsp-step-title">Noise Injection</div>
-              <div class="dsp-step-sub">10 dB / 0 dB SNR Noise</div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Condition Deep Dive Cards -->
-        <section class="condition-deep-dive-grid">
-          <div class="cond-card">
-            <div class="cond-header">
-              <h4>1. Clean (Studio 16 kHz)</h4>
-              <span class="cond-tag badge-blue">Baseline</span>
-            </div>
-            <p>Full 16 kHz frequency spectrum without channel filtering or noise.</p>
-            <div class="cond-stats">
-              <div>Prisma v2.5: <strong>8.18% WER</strong></div>
-              <div>Prisma v3.0: <strong class="text-lead">6.65% WER</strong></div>
-            </div>
-            <div class="cond-insight">Prisma v3.0 shows an immediate 1.53% advantage in clear acoustic environments.</div>
-          </div>
-
-          <div class="cond-card">
-            <div class="cond-header">
-              <h4>2. Telephony (G.712 Bandpass)</h4>
-              <span class="cond-tag badge-indigo">Bandpass</span>
-            </div>
-            <p>Strict 300–3400 Hz bandpass filtering, 8 kHz sampling, and 8-bit &mu;-law compression.</p>
-            <div class="cond-stats">
-              <div>Prisma v2.5: <strong>8.20% WER</strong></div>
-              <div>Prisma v3.0: <strong class="text-lead">7.84% WER</strong></div>
-            </div>
-            <div class="cond-insight">Prisma v3.0 retains its lead (7.84% vs 8.20%), showing strong telephony acoustic modeling.</div>
-          </div>
-
-          <div class="cond-card">
-            <div class="cond-header">
-              <h4>3. Tel + 10 dB SNR</h4>
-              <span class="cond-tag badge-amber">Moderate Noise</span>
-            </div>
-            <p>Telephony channel with calibrated Gaussian noise modeling moderate traffic or crowd noise.</p>
-            <div class="cond-stats">
-              <div>Prisma v2.5: <strong class="text-lead">11.32% WER</strong></div>
-              <div>Prisma v3.0: <strong>13.03% WER</strong></div>
-            </div>
-            <div class="cond-insight">The inflection point: Prisma v2.5 begins outperforming v3.0 by 1.71% as noise increases.</div>
-          </div>
-
-          <div class="cond-card">
-            <div class="cond-header">
-              <h4>4. Tel + 0 dB SNR</h4>
-              <span class="cond-tag badge-danger">Severe Noise</span>
-            </div>
-            <p>Equal signal and noise power (0 dB SNR), modeling severe street, bus, or industrial noise.</p>
-            <div class="cond-stats">
-              <div>Prisma v2.5: <strong class="text-lead">18.92% WER</strong></div>
-              <div>Prisma v3.0: <strong>25.82% WER</strong></div>
-            </div>
-            <div class="cond-insight">Prisma v2.5 demonstrates significant noise robustness, outperforming v3.0 by 6.90% absolute WER.</div>
-          </div>
-        </section>
-      </main>
-
-      <!-- VIEW 5: BFSI EVALUATION -->
-      <main class="view-panel hidden" id="view-bfsi">
-        <div class="panel-header-block">
-          <div>
-            <h2>BFSI Hinglish Banking Evaluation</h2>
-            <p class="panel-subtext">Evaluating downstream entity extraction accuracy for repayment amounts and due dates on conversational debt collection calls.</p>
-          </div>
-        </div>
-
-        <!-- Evaluator Notice Banner -->
-        <div class="evaluator-notice">
-          <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-          </svg>
-          <div>
-            <strong>Evaluation Scope Notice:</strong> These results are based on the tested 10-utterance pilot dataset voiced via Gnani Timbre v2.5 (<code>Pranav</code>, <code>hi-IN</code>) across 4 acoustic conditions (80 total evaluations). They demonstrate downstream regex/NER robustness on degraded transcripts, not universal production guarantees.
-          </div>
-        </div>
-
-        <!-- BFSI Metric Cards -->
-        <section class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-title">Clean / Tel Joint Accuracy</span>
-              <span class="kpi-badge badge-green">Exact Match</span>
-            </div>
-            <div class="kpi-number">100%</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">Both models extracted 10/10</span>
-              <span class="kpi-trend positive">&check; Clean & Tel</span>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-title">10 dB SNR Joint Accuracy</span>
-              <span class="kpi-badge badge-indigo">Robustness</span>
-            </div>
-            <div class="kpi-number">95.0%</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">100% v3.0 &bull; 90% v2.5</span>
-              <span class="kpi-trend positive">Graceful degradation</span>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-title">0 dB SNR Joint Accuracy</span>
-              <span class="kpi-badge badge-amber">Severe Noise</span>
-            </div>
-            <div class="kpi-number">80.0%</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">8/10 dialogues extracted</span>
-              <span class="kpi-trend neutral">Extreme noise limit</span>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-title">Hinglish Conversational WER</span>
-              <span class="kpi-badge badge-blue">Prisma v3.0 Lead</span>
-            </div>
-            <div class="kpi-number">31.60%</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">v3.0 (31.6%) vs v2.5 (39.9%)</span>
-              <span class="kpi-trend positive">+8.36% v3.0 lead</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- Scenarios Table -->
         <section class="card">
-          <div class="card-header">
-            <h3>Hinglish Banking Scenarios & Entity Extraction Status</h3>
-            <span class="badge-subtle">Voiced by Gnani Timbre v2.5</span>
-          </div>
           <div class="table-responsive">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Clip ID</th>
-                  <th>Customer Name</th>
-                  <th>Reference Dialogue (Hinglish)</th>
-                  <th>Ground Truth Amount</th>
-                  <th>Ground Truth Due Day</th>
-                  <th>Extraction Status (Tel)</th>
+                  <th>ID</th>
+                  <th>Kind</th>
+                  <th>Timestamp</th>
+                  <th>Model / Voice</th>
+                  <th>Language</th>
+                  <th>Latency</th>
+                  <th>Input Preview</th>
+                  <th>Output Preview</th>
+                  <th>Status</th>
                 </tr>
               </thead>
-              <tbody id="bfsi-scenarios-body">
-                <!-- Injected via JavaScript -->
+              <tbody id="history-table-body">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">No history records found yet.</td></tr>
               </tbody>
             </table>
           </div>
         </section>
       </main>
 
-      <!-- VIEW 6: FAILURES & DIAGNOSTICS -->
+      <!-- VIEW 8: FAILURES & DIAGNOSTICS -->
       <main class="view-panel hidden" id="view-diagnostics">
         <div class="panel-header-block">
           <div>
@@ -902,58 +1062,29 @@
           </div>
         </div>
 
-        <!-- Accounting Stats Row -->
         <section class="kpi-grid">
           <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-title">Total Network Attempts</span>
-              <span class="kpi-badge badge-indigo">Cap: 434 max</span>
-            </div>
+            <div class="kpi-header"><span class="kpi-title">Total Network Attempts</span><span class="kpi-badge badge-indigo">Cap: 434 max</span></div>
             <div class="kpi-number">341</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">93 attempts remaining in budget</span>
-              <span class="kpi-trend positive">78.6% used</span>
-            </div>
+            <div class="kpi-meta"><span class="kpi-detail">93 attempts remaining</span><span class="kpi-trend positive">78.6% used</span></div>
           </div>
-
           <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-title">Recovered 504 Timeouts</span>
-              <span class="kpi-badge badge-green">100% Recovered</span>
-            </div>
+            <div class="kpi-header"><span class="kpi-title">Recovered 504 Timeouts</span><span class="kpi-badge badge-green">100% Recovered</span></div>
             <div class="kpi-number">3</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">Cloudflare HTTP 504 Gateway Timeouts</span>
-              <span class="kpi-trend positive">Exponential backoff</span>
-            </div>
+            <div class="kpi-meta"><span class="kpi-detail">Cloudflare HTTP 504 Timeouts</span><span class="kpi-trend positive">Exponential backoff</span></div>
           </div>
-
           <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-title">Unrecovered Failures</span>
-              <span class="kpi-badge badge-green">Zero Loss</span>
-            </div>
+            <div class="kpi-header"><span class="kpi-title">Unrecovered Failures</span><span class="kpi-badge badge-green">Zero Loss</span></div>
             <div class="kpi-number">0</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">All 360 evaluations completed</span>
-              <span class="kpi-trend positive">&check; 100% Integrity</span>
-            </div>
+            <div class="kpi-meta"><span class="kpi-detail">All 360 evaluations completed</span><span class="kpi-trend positive">&check; 100% Integrity</span></div>
           </div>
-
           <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-title">SHA-256 Cache Hits</span>
-              <span class="kpi-badge badge-cyan">Content Addressed</span>
-            </div>
+            <div class="kpi-header"><span class="kpi-title">SHA-256 Cache Hits</span><span class="kpi-badge badge-cyan">Content Addressed</span></div>
             <div class="kpi-number">56</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">Saved 56 redundant live calls</span>
-              <span class="kpi-trend positive">&approx; 14% Savings</span>
-            </div>
+            <div class="kpi-meta"><span class="kpi-detail">Saved 56 redundant live calls</span><span class="kpi-trend positive">&approx; 14% Savings</span></div>
           </div>
         </section>
 
-        <!-- Incident Recovery Log -->
         <section class="card">
           <div class="card-header">
             <h3>Provider Incident & Resilience Telemetry Log</h3>
@@ -973,34 +1104,31 @@
                   <th>Resolution Status</th>
                 </tr>
               </thead>
-              <tbody id="diagnostics-log-body">
-                <!-- Injected via JavaScript -->
-              </tbody>
+              <tbody id="diagnostics-log-body"></tbody>
             </table>
           </div>
         </section>
 
-        <!-- Safety Architecture Overview -->
         <section class="card">
           <h3>Dead Man's Switch & Rate Limiter Safeguards</h3>
           <div class="safeguard-grid">
             <div class="safeguard-box">
               <h4>1. Cross-Process File Lock</h4>
-              <p>Uses <code>calllens/call_counter.py</code> with <code>portalocker</code> to guarantee that separate script processes (G1, G2, G3) share ONE persistent counter that halts when reaching 434 attempts.</p>
+              <p>Uses <code>calllens/call_counter.py</code> with <code>portalocker</code> to guarantee that separate script processes share ONE persistent counter halting at 434 attempts.</p>
             </div>
             <div class="safeguard-box">
               <h4>2. Concurrency Rate Limiter</h4>
-              <p>Token bucket enforcing a maximum of 2 concurrent network requests to prevent server 429 throttling and connection exhaustion.</p>
+              <p>Token bucket enforcing a maximum of 2 concurrent network requests to prevent server 429 throttling.</p>
             </div>
             <div class="safeguard-box">
               <h4>3. Automatic Header Redaction</h4>
-              <p>All logging and trace output automatically scrubs <code>token</code>, <code>api-key</code>, and authorization headers to guarantee zero credential leakage.</p>
+              <p>All logging automatically scrubs <code>token</code>, <code>api-key</code>, and authorization headers.</p>
             </div>
           </div>
         </section>
       </main>
 
-      <!-- VIEW 7: METHODOLOGY -->
+      <!-- VIEW 9: METHODOLOGY -->
       <main class="view-panel hidden" id="view-methodology">
         <div class="panel-header-block">
           <div>
@@ -1010,19 +1138,19 @@
         </div>
 
         <section class="card">
-          <h3>1. Benchmark Datasets</h3>
+          <h3>1. Platform Datasets</h3>
           <div class="methodology-grid">
             <div class="method-card">
               <h4>FLEURS Hindi (hi-IN) Read Speech</h4>
-              <p>30 standardized speech clips under CC BY 4.0 license. Durations &le; 28 seconds, sampled at 16 kHz. Represents clean native Hindi pronunciation across varied speakers.</p>
+              <p>30 standardized speech clips under CC BY 4.0 license. Durations &le; 28 seconds, sampled at 16 kHz. Represents clean native Hindi pronunciation.</p>
             </div>
             <div class="method-card">
               <h4>BFSI Banking Hinglish Dialogues</h4>
-              <p>10 conversational debt collection and payment reminder scenarios voiced via Gnani Timbre v2.5 (<code>Pranav</code>, <code>hi-IN</code>), testing complex number words, dates, and code-mixed vocabulary.</p>
+              <p>10 conversational debt collection scenarios voiced via Gnani Timbre v2.5 (<code>Pranav</code>, <code>hi-IN</code>), testing complex number words and code-mixed vocabulary.</p>
             </div>
             <div class="method-card">
               <h4>Noise & Silence Hallucination Suite</h4>
-              <p>20 five-second clips (10 seeded white Gaussian noise, 10 digital silence) to verify that neither model outputs phantom words on non-speech inputs.</p>
+              <p>20 five-second clips (10 seeded white Gaussian noise, 10 digital silence) to verify non-speech hallucination resistance.</p>
             </div>
           </div>
         </section>
@@ -1039,7 +1167,7 @@
 
         <section class="card">
           <h3>3. Provenance Isolation Guarantee</h3>
-          <p>Synthetic mock demonstration data and genuine live provider results are strictly isolated at the database level via the <code>provenance</code> column in SQLite (<code>../calllens-data/benchmark.db</code>). Live aggregations and replay modes strictly filter by <code>provenance = 'live'</code>, guaranteeing zero mock data mixing.</p>
+          <p>Synthetic mock demonstration data and genuine live provider results are strictly isolated at the database level via the <code>provenance</code> column in SQLite (<code>../calllens-data/benchmark.db</code>). Live aggregations strictly filter by <code>provenance = 'live'</code>, guaranteeing zero mock data mixing.</p>
         </section>
       </main>
     </div>
