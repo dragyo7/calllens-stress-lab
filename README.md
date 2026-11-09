@@ -37,6 +37,15 @@ The interactive web dashboard provides side-by-side model comparison, real-time 
 ### Desktop Dashboard View (1440 &times; 900)
 ![CallLens Desktop Dashboard](docs/screenshots/dashboard_1440x900.png)
 
+### Model Comparison Matrix & Bootstrap Confidence Intervals
+![Model Comparison View](docs/screenshots/model_comparison_view.png)
+
+### BFSI Banking Evaluation & Downstream Entity Extraction
+![BFSI Evaluation View](docs/screenshots/bfsi_evaluation_view.png)
+
+### Failures & Diagnostic Telemetry Center
+![Failures & Diagnostics View](docs/screenshots/failures_diagnostics_view.png)
+
 ### Mobile & Responsive View (390 &times; 844)
 <img src="docs/screenshots/mobile_390x844.png" width="380" alt="CallLens Mobile Dashboard" />
 
