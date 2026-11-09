@@ -270,13 +270,14 @@ calllens/
 │   ├── test_extract.py         # BFSI regex & Hinglish parsing tests
 │   ├── test_hard_backend.py    # Concurrency, edge cases, & recovery tests
 │   ├── test_metrics.py         # WER, CER, bootstrap CI validation tests
+│   ├── test_persistence_and_security.py # Security, live policy & persistence lifecycle tests
 │   ├── test_scaffold.py        # Environment & baseline checks
 │   ├── test_security_adversarial.py # Injection, path traversal, & DoS tests
 │   └── results.md              # Machine-readable benchmark results summary
 ├── docs/
 │   ├── BRIEF.md                # Project requirements specification
 │   ├── CHECKS.md               # Independent QA & validation plan
-│   ├── DECISIONS.md            # Architecture Decision Records (ADRs D-001 to D-008)
+│   ├── DECISIONS.md            # Architecture Decision Records (ADRs D-001 to D-013)
 │   ├── THREAT.md               # 5 threat models with code line citations
 │   ├── FAILURE.md              # Operational failure modes & recovery runbooks
 │   ├── DATA.md                 # Dataset provenance & schema definitions
@@ -289,6 +290,8 @@ calllens/
 ├── .env.example                # Safe environment configuration template
 ├── .gitignore                  # Strict exclusion rules (secrets, venv, data, DBs)
 ├── requirements.txt            # Pinned, audited dependencies
+├── DEMO_GUIDE.md               # 13-step evaluator demo playbook & 5-8 min pitch script
+├── FUTURE_ROADMAP.md           # Architectural extensibility review across 15 directions
 ├── SOLUTION_PITCH.md           # 1-page evaluator pitch & business impact summary
 └── README.md                   # Project documentation & presentation
 ```
