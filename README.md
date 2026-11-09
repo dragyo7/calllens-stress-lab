@@ -3,7 +3,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Tests: 117 Passing](https://img.shields.io/badge/tests-117%20passed-brightgreen.svg)]()
+[![Tests: 136 Passing](https://img.shields.io/badge/tests-136%20passed-brightgreen.svg)]()
 [![Safety Cap: Enforced](https://img.shields.io/badge/safety--cap-enforced-orange.svg)]()
 [![Provenance: Isolated](https://img.shields.io/badge/provenance-isolated-blueviolet.svg)]()
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
@@ -18,11 +18,11 @@
 
 The platform provides an end-to-end speech engineering suite integrating:
 1. **Speech-to-Text (STT) Studio:** Audio file uploads (&le; 5 MB), live browser microphone recording with real-time Web Audio API waveform visualization, preloaded benchmark clips, 10 Indic languages, format selector (verbatim, ITN transcribe, codemix), and one-click transcript copy/download.
-2. **Text-to-Speech (TTS) Studio:** Natural voice synthesis powered by the official Gnani Timbre v2.5 catalog (42 Indic voices, highlighting verified flagship Hindi male `Pranav` and female `Kaveri`), dynamic speaking rates (0.85x–1.15x), banking & OTP quick templates, audio player with waveform preview, and WAV downloads.
-3. **Live Speech Playground (WebSocket Gateway):** High-performance bidirectional streaming session gateway over `/ws/speech` capturing microphone audio chunks in real time, emitting transparent lifecycle events (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`), and executing atomic transcription and voice feedback with complete architectural honesty (zero fabricated streaming illusions).
-4. **CallLens Follow-up Desk (Human-in-the-Loop BFSI Workflow):** Operational debt collection speech workflow. Ingests authentic Hindi debt collection calls, extracts actionable commitments (customer name, overdue amount, original due date, promise-to-pay date, hardship reason), strictly flags missing data for operator review (never hallucinating dates or amounts), and synthesizes respectful personalized Hindi voice reminders via Timbre.
+2. **Text-to-Speech (TTS) Studio:** Natural voice synthesis powered by 7 curated Gnani Timbre Indic voices (highlighting verified flagship Hindi male `Pranav` and female `Kaveri`), dynamic speaking rates (0.85x–1.15x), banking & OTP quick templates, audio player with waveform preview, and WAV downloads.
+3. **Live Speech Playground (WebSocket Gateway):** Application-level WebSocket audio transport with buffered REST transcription over `/ws/speech`, capturing microphone audio chunks in real time, emitting transparent lifecycle events (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`), and executing atomic transcription and voice feedback with complete architectural honesty (zero fabricated streaming illusions).
+4. **CallLens Follow-up Desk (Human-in-the-Loop BFSI Workflow):** Operational debt collection speech workflow with curated synthetic collection scenarios for human-in-the-loop operator review and reminder generation. Ingests representative Hindi debt collection calls, extracts actionable commitments (customer name, overdue amount, original due date, promise-to-pay date, hardship reason), strictly flags missing data for operator review (never hallucinating dates or amounts), and synthesizes respectful personalized Hindi voice reminders via Timbre.
 5. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls.
-6. **Audio History & Audit Log:** Persistent, audit-ready SQLite ledger of all STT transcriptions, TTS voice generations, and confirmed follow-up reminder dispatches.
+6. **Call Data Persistence & Storage Diagnostics:** Persistent SQLite schema (`recording_sessions`, `audio_assets`, `speech_operations`, `transcripts`, `followup_records`) storing audio files outside Git with SHA-256 integrity, session deletion, and real-time storage diagnostics (`GET /api/storage/diagnostics`).
 
 ---
 
@@ -43,11 +43,11 @@ Transcribe custom audio files, live microphone speech, or preloaded clips with G
 ![Speech-to-Text Studio](docs/screenshots/stt_studio.png)
 
 ### Text-to-Speech (TTS) Studio
-Synthesize natural Indic speech with 42 Timbre voices, adjustable speaking speed, prebuilt BFSI reminders, interactive audio player, and instant WAV download.
+Synthesize natural Indic speech with 7 curated Timbre Indic voices (flagship Pranav and Kaveri), adjustable speaking speed, prebuilt BFSI reminders, interactive audio player, and instant WAV download.
 ![Text-to-Speech Studio](docs/screenshots/tts_studio.png)
 
 ### Live Speech Playground (WebSocket Gateway)
-Bidirectional streaming gateway capturing live microphone chunks and emitting structured lifecycle events.
+Application-level WebSocket audio transport with buffered REST transcription capturing live microphone chunks and emitting structured lifecycle events.
 ![Live Playground](docs/screenshots/live_playground.png)
 
 ### Telephony Stress Lab & Model Comparison
@@ -81,14 +81,16 @@ flowchart TD
     subgraph API_Layer ["Backend Gateway (FastAPI)"]
         Server["FastAPI REST & WebSocket Gateway\n(app/main.py)"]
         STTEndpoint["POST /api/stt/transcribe\n(File Upload, Mic, Preloaded Clips)"]
-        TTSEndpoint["POST /api/tts/synthesize\n(42 Timbre Voices, WAV Download)"]
+        TTSEndpoint["POST /api/tts/synthesize\n(7 Curated Timbre Voices, WAV Download)"]
         FollowupDesk["POST /api/followup/process & confirm\n(Commitment Extraction & Human-in-Loop TTS)"]
-        WSEndpoint["WebSocket /ws/speech\n(Lifecycle Events & Chunk Buffer)"]
-        HistoryDB["GET & DELETE /api/history\n(Persistent SQLite Audit Trail)"]
+        WSEndpoint["WebSocket /ws/speech\n(Buffered Audio Transport & REST Transcription)"]
+        RecordingsAPI["GET & DELETE /api/recordings/{session_id}\n(Session Lifecycle & Asset Deletion)"]
+        StorageDiag["GET /api/storage/diagnostics\n(Observability & Integrity Audit)"]
     end
 
     subgraph Gateway_Layer ["Centralized Provider Gateway"]
         Client["Gnani Client Gateway\n(calllens/gnani_client.py)"]
+        LivePolicy["Live Policy Guard\n(ALLOW_LIVE_API=0 Fail Closed)"]
         CapGuard["Dead Man's Switch\n(Persistent 434-Call Safety Ceiling)"]
         CacheStore["SHA-256 Disk Cache\n(Content-Addressable Storage)"]
         TokenBucket["Concurrency Rate Limiter\n(Token Bucket + Semaphore: max 2)"]
@@ -110,15 +112,19 @@ flowchart TD
         BFSIRules["BFSI Entity Extractor\n(Amounts, Due Dates, Hinglish Rules)"]
     end
 
-    subgraph Persistence ["Storage Layer"]
+    subgraph Persistence ["Persistence & Storage Layer (outside git)"]
         DB[(SQLite benchmark.db\nStrict Provenance Tagging)]
-        HistTable[(SQLite audio_history\nAudit Records & Latency Logs)]
+        SessionsTable[(recording_sessions\nsource, customer, status)]
+        AssetsTable[(audio_assets\nSHA-256, duration, UUID path)]
+        TranscriptsTable[(transcripts\ntext, word_count)]
+        FollowupTable[(followup_records\namount, due_date, ptp_date)]
+        DiskAudio["Audio Storage Directories\n(../calllens-data/recordings & tts_audio)"]
     end
 
     subgraph External_APIs ["Gnani Speech AI Platform"]
         Prisma25["Prisma v2.5 STT"]
         Prisma30["Prisma v3.0 STT"]
-        Timbre25["Timbre v2.5 TTS\n(42 Indic Voices)"]
+        Timbre25["Timbre v2.5 TTS\n(7 Curated Indic Voices)"]
     end
 
     UI --> Server
@@ -127,14 +133,16 @@ flowchart TD
     Server --> STTEndpoint --> Client
     Server --> TTSEndpoint --> Client
     Server --> WSEndpoint --> Client
-    Server --> HistoryDB --> HistTable
+    Server --> RecordingsAPI --> SessionsTable
+    Server --> StorageDiag --> AssetsTable
     Server --> Runner
 
     RawAudio --> BP --> Resample8k --> MuLaw --> NoiseInject --> Reconstruct
     Runner --> Audio_Pipeline
     Runner --> Client
 
-    Client --> CapGuard
+    Client --> LivePolicy
+    LivePolicy --> CapGuard
     CapGuard --> CacheStore
     CapGuard --> TokenBucket
     TokenBucket --> SecretFilter
@@ -145,6 +153,24 @@ flowchart TD
     MetricsEng --> DB
     BFSIRules --> DB
 ```
+
+### 3.1 Call Data Persistence, Security & Storage Lifecycle
+
+CallLens treats speech recording data as persistent, audit-verifiable enterprise assets stored securely outside Git in `../calllens-data`:
+
+1. **Relational Schemas:**
+   - `recording_sessions`: Lifecycle tracking (`active`, `completed`, `interrupted`, `cancelled`, `failed`, `forbidden`) with metadata and customer associations.
+   - `audio_assets`: Physical files linked with SHA-256 integrity hash, exact decoded duration via `soundfile`, channels, sample rate, and UUID filenames.
+   - `speech_operations`: Comprehensive operation logs tracking model, language, format, provenance (`live`, `cache`, `mock`), latency, and sanitized error codes.
+   - `transcripts`: Persisted transcription text with word/character counts and finality markers.
+   - `followup_records`: Confirmed debt-collection commitments (overdue amounts, due dates, promise-to-pay commitments, hardship reasons).
+2. **Audio Durability & Failure Preservation:**
+   - Raw audio chunks buffered over WebSockets or uploaded via REST are written to disk as durable `audio_assets` **before** upstream speech recognition is invoked. If the STT provider times out or fails, the original audio asset is strictly preserved on disk and accessible via URL for operator playback.
+3. **Storage Diagnostics & Session Cleanup:**
+   - `GET /api/storage/diagnostics`: Inspects physical disk usage, total sessions, audio assets, and scans for missing or orphaned files.
+   - `DELETE /api/recordings/{session_id}`: Cascading deletion that unlinks physical audio files from disk and removes relational records.
+4. **Server-Enforced Live Authorization Policy:**
+   - Fails closed (`ALLOW_LIVE_API=0` by default). Any incoming request with `live=1` without explicit environment authorization triggers an immediate `HTTP 403 Forbidden` (`LIVE_EXECUTION_FORBIDDEN`), preventing accidental credit consumption.
 
 ---
 
@@ -303,22 +329,24 @@ Edit `.env` with your settings:
 GNANI_API_KEY=your_gnani_api_key_here
 DATA_DIR=../calllens-data
 DATABASE_URL=sqlite:///../calllens-data/benchmark.db
+ALLOW_LIVE_API=0
 MAX_LIVE_CALLS=10
 GNANI_TIMEOUT=30
 GNANI_CONCURRENCY_LIMIT=2
 APP_HOST=127.0.0.1
 APP_PORT=8000
+ALLOWED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
 ```
 > **Security Notice:** `.env` is strictly ignored by Git (`git check-ignore .env`). Never commit API keys or secret credentials.
 
-### 3. Run the Verification Suite (113 Tests)
+### 3. Run the Verification Suite (136 Tests)
 Verify the entire codebase, speech platform endpoints, WebSocket gateways, audio pipeline, and security assertions offline without making any live API calls:
 ```bash
 pytest -q
 ```
 Expected output:
 ```text
-113 passed in 7.41s
+136 passed in 8.24s
 ```
 
 ### 4. Launch the Speech Intelligence Platform

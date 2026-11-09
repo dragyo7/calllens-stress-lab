@@ -54,12 +54,25 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Configurable CORS origin allowlist (rejects unrestricted wildcard when credentials are used)
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+env_origins = os.getenv("ALLOWED_ORIGINS", "")
+if env_origins:
+    ALLOWED_ORIGINS = [o.strip() for o in env_origins.split(",") if o.strip()]
+else:
+    ALLOWED_ORIGINS = DEFAULT_ALLOWED_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Clip-Id", "X-Condition", "X-Live", "X-Allow-Mock"],
 )
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -70,7 +83,50 @@ MAX_AUDIO_DURATION_SEC = 30.0
 RATE_LIMIT_REQUESTS = 10
 RATE_LIMIT_WINDOW_SEC = 60.0
 
+# Server-side live provider execution authorization policy (fail closed)
+ALLOW_LIVE_API = os.getenv("ALLOW_LIVE_API", "0").lower() in ("1", "true", "yes")
+
+import threading
+_rate_limit_lock = threading.Lock()
 _request_timestamps: dict[str, list[float]] = defaultdict(list)
+_MAX_RATE_LIMIT_IPS = 5000
+
+
+def enforce_live_policy(requested_live: int | bool) -> bool:
+    """Enforces server-controlled policy for live external API execution.
+    Fails closed with HTTP 403 if client requests live execution but server config disables it.
+    """
+    if requested_live:
+        if not ALLOW_LIVE_API:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Live provider execution is disabled by server security policy. Only recorded live benchmarks, cached runs, and safe replay are permitted."
+            )
+        return True
+    return False
+
+
+def check_rate_limit(client_ip: str) -> None:
+    """Thread-safe per-IP rate limiter with bounded memory.
+    Process-local single-instance rate limiter; not intended for multi-worker distributed clusters.
+    """
+    now = time.time()
+    cutoff = now - RATE_LIMIT_WINDOW_SEC
+    with _rate_limit_lock:
+        if len(_request_timestamps) > _MAX_RATE_LIMIT_IPS:
+            stale = [ip for ip, ts in _request_timestamps.items() if not ts or ts[-1] <= cutoff]
+            for ip in stale:
+                del _request_timestamps[ip]
+
+        timestamps = [t for t in _request_timestamps[client_ip] if t > cutoff]
+        if len(timestamps) >= RATE_LIMIT_REQUESTS:
+            _request_timestamps[client_ip] = timestamps
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Rate limit exceeded: maximum {RATE_LIMIT_REQUESTS} requests per minute.",
+            )
+        timestamps.append(now)
+        _request_timestamps[client_ip] = timestamps
 
 
 class StressRequest(BaseModel):
@@ -128,19 +184,6 @@ class FollowupConfirmRequest(BaseModel):
     language: str = Field(default="hi-IN", description="Language")
     live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
     operator_notes: str | None = Field(default=None, description="Audit notes from operator")
-
-
-def check_rate_limit(client_ip: str) -> None:
-    now = time.time()
-    cutoff = now - RATE_LIMIT_WINDOW_SEC
-    timestamps = [t for t in _request_timestamps[client_ip] if t > cutoff]
-    if len(timestamps) >= RATE_LIMIT_REQUESTS:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Rate limit exceeded: maximum {RATE_LIMIT_REQUESTS} requests per minute.",
-        )
-    timestamps.append(now)
-    _request_timestamps[client_ip] = timestamps
 
 
 def get_data_dir() -> Path:
@@ -469,20 +512,43 @@ def get_benchmark_summary(provenance: str = "live"):
         return {"has_data": False, "error": str(exc)}
 
 
-@app.get("/api/audio/{clip_id}")
-def get_audio(clip_id: str, condition: str = "clean"):
-    """Serves the specified test audio clip (clean or degraded) for browser playback."""
+@app.get("/api/audio/{identifier}")
+def serve_audio(identifier: str, condition: str = "clean"):
+    """Serves test audio clips or persisted audio assets with strict path-traversal prevention."""
+    if ".." in identifier or "/" in identifier or "\\" in identifier:
+        raise HTTPException(status_code=400, detail="Invalid audio identifier: path traversal sequence detected.")
+
+    safe_name = Path(identifier).name
+    if safe_name != identifier:
+        raise HTTPException(status_code=400, detail="Invalid audio identifier.")
+
     data_dir = get_data_dir()
-    proc_file = data_dir / "processed_audio" / f"{clip_id}_{condition}.wav"
-    if proc_file.exists():
+    rec_dir, tts_dir = history.get_storage_dirs(data_dir)
+
+    # 1. Search persisted storage directories (recordings, tts_audio, temp)
+    for search_dir in [tts_dir, rec_dir, data_dir / "temp"]:
+        p = (search_dir / safe_name).resolve()
+        try:
+            if p.is_relative_to(search_dir.resolve()) and p.exists() and p.is_file():
+                return FileResponse(p, media_type="audio/wav")
+        except (ValueError, RuntimeError):
+            pass
+
+    # 2. Search processed test clips: processed_audio/{clip_id}_{condition}.wav
+    proc_file = data_dir / "processed_audio" / f"{safe_name}_{condition}.wav"
+    if proc_file.exists() and proc_file.is_file():
         return FileResponse(proc_file, media_type="audio/wav")
 
+    # 3. Search raw clip folders
     for folder in ["fleurs", "bfsi", "noise_silence", "bfsi_mock"]:
-        raw_file = data_dir / folder / f"{clip_id}.wav"
-        if raw_file.exists():
-            return FileResponse(raw_file, media_type="audio/wav")
+        candidate = data_dir / folder / f"{safe_name}.wav"
+        if candidate.exists() and candidate.is_file():
+            return FileResponse(candidate, media_type="audio/wav")
+        candidate2 = data_dir / folder / safe_name
+        if candidate2.exists() and candidate2.is_file():
+            return FileResponse(candidate2, media_type="audio/wav")
 
-    raise HTTPException(status_code=404, detail=f"Audio clip '{clip_id}' not found")
+    raise HTTPException(status_code=404, detail=f"Audio asset or clip '{identifier}' not found")
 
 
 @app.post("/api/stress")
@@ -534,7 +600,7 @@ async def run_stress_test(request: Request):
         )
 
     data_dir = get_data_dir()
-    is_live = bool(req_data.live)
+    is_live = enforce_live_policy(req_data.live)
 
     # Determine mock allowance (mock fixtures are reachable only from test suite)
     allow_mock_header = request.headers.get("x-allow-mock")
@@ -844,7 +910,10 @@ async def transcribe_speech(
         f.write(audio_bytes)
 
     start_time = time.perf_counter()
-    is_live = bool(live)
+    is_live = enforce_live_policy(live)
+
+    # Persist audio asset to storage with SHA-256 integrity check
+    saved_asset = history.save_audio_asset(audio_bytes, asset_type="original")
 
     payload = {
         "audio": temp_audio_file,
@@ -859,8 +928,21 @@ async def transcribe_speech(
         res = gnani_client.call("stt", payload, live=is_live, use_cache=True)
         elapsed = time.perf_counter() - start_time
     except Exception as exc:
-        logger.error("STT transcription failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {exc}")
+        logger.error("STT transcription failed: %s", exc, exc_info=True)
+        history.record_speech_operation(
+            session_id=None,
+            asset_id=saved_asset["asset_id"],
+            operation_type="stt",
+            model=model,
+            language=language_code,
+            format=format,
+            status="failed",
+            error_code="STT_FAILED",
+            error_message=str(exc),
+        )
+        if "504" in str(exc) or "timeout" in str(exc).lower():
+            raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Speech recognition provider timed out. Please retry.")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Speech recognition provider request failed. Please check audio format and retry.")
     finally:
         try:
             if temp_audio_file.exists():
@@ -871,8 +953,9 @@ async def transcribe_speech(
     transcript = res.get("transcript", "")
     word_count = len(transcript.strip().split()) if transcript.strip() else 0
     char_count = len(transcript)
+    provenance = "cache" if res.get("from_cache") else ("live" if is_live else "mock")
 
-    # Record into audit history
+    # Record into audit history and structured storage
     hist_id = history.record_stt_history(
         model=res.get("model", model),
         language=language_code,
@@ -882,12 +965,34 @@ async def transcribe_speech(
         input_name=input_label,
         transcript=transcript,
         status="completed",
+        audio_filename=saved_asset["filename"],
         metadata={
             "words": word_count,
             "chars": char_count,
             "mock": res.get("mock", not is_live),
             "from_cache": res.get("from_cache", False),
+            "provenance": provenance,
+            "asset_id": saved_asset["asset_id"],
         },
+    )
+
+    history.record_transcript(
+        text=transcript,
+        session_id=None,
+        operation_id=None,
+        is_final=True,
+    )
+
+    history.record_speech_operation(
+        session_id=None,
+        asset_id=saved_asset["asset_id"],
+        operation_type="stt",
+        model=res.get("model", model),
+        language=language_code,
+        format=format,
+        status="completed",
+        provenance=provenance,
+        latency_ms=elapsed * 1000,
     )
 
     return {
@@ -904,6 +1009,9 @@ async def transcribe_speech(
         "char_count": char_count,
         "from_cache": res.get("from_cache", False),
         "mock": res.get("mock", not is_live),
+        "provenance": provenance,
+        "asset_id": saved_asset["asset_id"],
+        "audio_url": f"/api/audio/{saved_asset['filename']}",
         "history_id": hist_id,
     }
 
@@ -935,7 +1043,7 @@ async def synthesize_speech(req: TTSRequest, request: Request):
     temp_dir = data_dir / "temp"
     temp_dir.mkdir(parents=True, exist_ok=True)
 
-    is_live = bool(req.live)
+    is_live = enforce_live_policy(req.live)
     start_time = time.perf_counter()
 
     payload = {
@@ -950,20 +1058,17 @@ async def synthesize_speech(req: TTSRequest, request: Request):
         audio_bytes = gnani_client.call("tts", payload, live=is_live, use_cache=True)
         elapsed = time.perf_counter() - start_time
     except Exception as exc:
-        logger.error("TTS synthesis failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Synthesis failed: {exc}")
+        logger.error("TTS synthesis failed: %s", exc, exc_info=True)
+        if "504" in str(exc) or "timeout" in str(exc).lower():
+            raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Text-to-speech provider timed out. Please retry.")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Speech synthesis provider request failed. Please verify configuration and retry.")
 
-    try:
-        with io.BytesIO(audio_bytes) as bio:
-            info = sf.info(bio)
-            duration_sec = info.duration
-    except Exception:
-        duration_sec = len(clean_text) * 0.08
-
-    filename = f"tts_{hashlib.md5(f'{clean_text}_{req.voice}_{req.language}_{req.speed}'.encode()).hexdigest()[:16]}.wav"
-    audio_file_path = temp_dir / filename
-    with open(audio_file_path, "wb") as f:
-        f.write(audio_bytes)
+    # Save audio asset with collision-resistant random UUID identifier and measure duration
+    saved_asset = history.save_audio_asset(audio_bytes, asset_type="tts_generated")
+    filename = saved_asset["filename"]
+    duration_sec = saved_asset["duration_seconds"]
+    duration_estimated = saved_asset["duration_estimated"]
+    provenance = "live" if is_live else "mock"
 
     hist_id = history.record_tts_history(
         model=req.model,
@@ -977,46 +1082,95 @@ async def synthesize_speech(req: TTSRequest, request: Request):
         metadata={
             "speed": req.speed,
             "mock": not is_live,
+            "provenance": provenance,
+            "duration_estimated": duration_estimated,
             "char_count": len(clean_text),
+            "asset_id": saved_asset["asset_id"],
         },
+    )
+
+    history.record_speech_operation(
+        session_id=None,
+        asset_id=saved_asset["asset_id"],
+        operation_type="tts",
+        model=f"{req.model} ({req.voice})",
+        voice=req.voice,
+        language=req.language,
+        status="completed",
+        provenance=provenance,
+        latency_ms=elapsed * 1000,
     )
 
     return {
         "success": True,
         "audio_url": f"/api/tts/audio/{filename}",
         "filename": filename,
+        "asset_id": saved_asset["asset_id"],
         "audio_base64": base64.b64encode(audio_bytes).decode("utf-8"),
         "text": clean_text,
         "voice": req.voice,
         "model": req.model,
         "language": req.language,
         "speed": req.speed,
-        "duration_sec": round(duration_sec, 2),
+        "duration_sec": round(duration_sec, 2) if duration_sec is not None else round(len(clean_text) * 0.08, 2),
+        "duration_estimated": duration_estimated,
         "char_count": len(clean_text),
         "latency_sec": round(elapsed, 3),
         "mock": not is_live,
+        "provenance": provenance,
         "history_id": hist_id,
     }
 
 
+serve_audio_asset = serve_audio
+
+
 @app.get("/api/tts/audio/{filename}")
 def serve_tts_audio(filename: str):
-    """Serves synthesized TTS audio files."""
-    if not re.match(r"^tts_[a-zA-Z0-9_-]+\.wav$", filename):
-        raise HTTPException(status_code=400, detail="Invalid audio filename format.")
+    """Serves synthesized TTS audio files (backward-compatible endpoint)."""
+    return serve_audio(filename)
 
-    data_dir = get_data_dir()
-    audio_path = data_dir / "temp" / filename
-    if not audio_path.exists():
-        raise HTTPException(status_code=404, detail="Audio file not found or expired.")
 
-    return FileResponse(audio_path, media_type="audio/wav")
+@app.get("/api/recordings")
+def list_recording_sessions(limit: int = 50, status: str | None = None):
+    """Returns persistent call recording sessions, audio assets, and transcripts."""
+    sessions = history.get_recording_sessions(limit=min(100, max(1, limit)), status=status)
+    return {"recordings": sessions}
+
+
+@app.get("/api/recordings/{session_id}")
+def get_recording_session(session_id: str):
+    """Returns detailed session lifecycle metadata, audio assets, transcripts, and status."""
+    safe_sess = Path(session_id).name
+    sessions = history.get_recording_sessions(limit=100)
+    found = next((s for s in sessions if s["session_id"] == safe_sess), None)
+    if not found:
+        raise HTTPException(status_code=404, detail="Recording session not found.")
+    return found
+
+
+@app.delete("/api/recordings/{session_id}")
+def delete_recording_session(session_id: str):
+    """Permanently deletes a recording session, its audio files on disk, and DB records."""
+    safe_sess = Path(session_id).name
+    ok = history.delete_recording_session(safe_sess)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Recording session not found or deletion failed.")
+    return {"success": True, "session_id": safe_sess, "deleted": True}
+
+
+@app.get("/api/storage/diagnostics")
+def get_storage_stats():
+    """Returns genuine storage integrity observability metrics."""
+    return history.get_storage_diagnostics()
 
 
 @app.get("/api/tts/voices")
 def get_supported_voices():
-    """Returns catalog of supported Gnani Timbre voices with recommendations."""
+    """Returns catalog of 7 curated Gnani Timbre voices exposed in CallLens."""
     return {
+        "catalog_scope": "7 curated Indic voices (with Pranav and Kaveri as primary verified models)",
+        "total_exposed": 7,
         "voices": [
             {"id": "Pranav", "name": "Pranav", "gender": "Male", "language": "Hindi / Hinglish", "recommended": True, "description": "Flagship Hindi male conversational voice. Verified in benchmark experiments."},
             {"id": "Kaveri", "name": "Kaveri", "gender": "Female", "language": "Hindi / Indic", "recommended": True, "description": "Expressive female conversational voice for customer service."},
@@ -1051,6 +1205,8 @@ def clear_audit_history():
 # Live Speech WebSocket Session Controller
 # ---------------------------------------------------------
 
+MAX_WS_CHUNK_BYTES = 512 * 1024  # 512 KB per audio packet
+
 @app.websocket("/ws/speech")
 async def speech_websocket_endpoint(websocket: WebSocket):
     """Application-level WebSocket endpoint managing interactive speech recording,
@@ -1060,6 +1216,13 @@ async def speech_websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     session_id = f"sess_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
     logger.info("[WebSocket] Client connected: %s", session_id)
+
+    # Initialize persistent recording session in DB
+    history.create_recording_session(
+        source="websocket_live",
+        session_id=session_id,
+        language="hi-IN",
+    )
 
     # Initial session confirmation
     await websocket.send_json({
@@ -1081,6 +1244,8 @@ async def speech_websocket_endpoint(websocket: WebSocket):
     temp_dir = data_dir / "temp"
     temp_dir.mkdir(parents=True, exist_ok=True)
 
+    session_status = "active"
+
     try:
         while True:
             msg = await websocket.receive()
@@ -1088,9 +1253,18 @@ async def speech_websocket_endpoint(websocket: WebSocket):
             # Handle binary audio chunks (MediaRecorder streaming)
             if "bytes" in msg and msg["bytes"]:
                 chunk = msg["bytes"]
+                if len(chunk) > MAX_WS_CHUNK_BYTES:
+                    await websocket.send_json({
+                        "type": "operation_failed",
+                        "error_code": "CHUNK_TOO_LARGE",
+                        "error": f"Audio chunk exceeds maximum allowed chunk size of {MAX_WS_CHUNK_BYTES // 1024} KB.",
+                    })
+                    continue
+
                 if len(audio_buffer) + len(chunk) > MAX_UPLOAD_BYTES:
                     await websocket.send_json({
                         "type": "operation_failed",
+                        "error_code": "BUFFER_LIMIT_EXCEEDED",
                         "error": f"Buffer limit exceeded ({MAX_UPLOAD_BYTES / (1024*1024):.0f} MB max). Resetting stream.",
                     })
                     audio_buffer.clear()
@@ -1110,6 +1284,7 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                 except Exception:
                     await websocket.send_json({
                         "type": "operation_failed",
+                        "error_code": "INVALID_JSON",
                         "error": "Malformed JSON text payload received.",
                     })
                     continue
@@ -1117,10 +1292,19 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                 action = payload.get("action")
 
                 if action == "start_session":
+                    requested_live = int(payload.get("live", 0))
+                    if requested_live and not ALLOW_LIVE_API:
+                        await websocket.send_json({
+                            "type": "operation_failed",
+                            "error_code": "LIVE_EXECUTION_FORBIDDEN",
+                            "error": "Live provider execution is disabled by server policy (ALLOW_LIVE_API=0). Request denied.",
+                        })
+                        continue
+
                     active_config["model"] = payload.get("model", "prisma-v2.5")
                     active_config["language_code"] = payload.get("language_code", "hi-IN")
                     active_config["format"] = payload.get("format", "verbatim")
-                    active_config["live"] = int(payload.get("live", 0))
+                    active_config["live"] = requested_live
                     audio_buffer.clear()
                     await websocket.send_json({
                         "type": "session_configured",
@@ -1131,27 +1315,32 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                     if not audio_buffer:
                         await websocket.send_json({
                             "type": "operation_failed",
+                            "error_code": "EMPTY_BUFFER",
                             "error": "Audio buffer is empty. Record audio before submitting.",
                         })
                         continue
 
+                    # Persist raw recording FIRST to guarantee durability even if downstream ASR fails
+                    raw_audio_bytes = bytes(audio_buffer)
+                    saved_asset = history.save_audio_asset(
+                        raw_audio_bytes,
+                        asset_type="recording",
+                        session_id=session_id,
+                    )
+                    duration_sec = saved_asset["duration_seconds"] or 2.0
+
                     await websocket.send_json({
                         "type": "transcription_started",
                         "total_bytes": len(audio_buffer),
+                        "asset_id": saved_asset["asset_id"],
+                        "audio_url": f"/api/audio/{saved_asset['filename']}",
                     })
 
-                    # Write buffer to temporary file
+                    # Write buffer to temporary file for SDK call
                     tmp_wav = temp_dir / f"live_{session_id}.wav"
-                    tmp_wav.write_bytes(audio_buffer)
+                    tmp_wav.write_bytes(raw_audio_bytes)
 
                     start_time = time.perf_counter()
-                    try:
-                        with io.BytesIO(audio_buffer) as bio:
-                            audio_arr, sr = sf.read(bio, dtype="float32")
-                            duration_sec = len(audio_arr) / float(sr)
-                    except Exception:
-                        duration_sec = 2.0
-
                     stt_payload = {
                         "audio": tmp_wav,
                         "model": active_config["model"],
@@ -1161,12 +1350,16 @@ async def speech_websocket_endpoint(websocket: WebSocket):
 
                     try:
                         is_live = bool(active_config["live"])
+                        if is_live and not ALLOW_LIVE_API:
+                            raise PermissionError("Live provider execution forbidden by server policy.")
+
                         res = gnani_client.call("stt", stt_payload, live=is_live, use_cache=True)
                         elapsed = time.perf_counter() - start_time
                         transcript = res.get("transcript", "")
                         words = len(transcript.strip().split()) if transcript.strip() else 0
+                        provenance = "cache" if res.get("from_cache") else ("live" if is_live else "mock")
 
-                        # Record to history
+                        # Record to audit history and persistence tables
                         history.record_stt_history(
                             model=res.get("model", active_config["model"]),
                             language=active_config["language_code"],
@@ -1177,7 +1370,38 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                             transcript=transcript,
                             status="completed",
                             session_id=session_id,
-                            metadata={"words": words, "mock": res.get("mock", not is_live)},
+                            audio_filename=saved_asset["filename"],
+                            metadata={
+                                "words": words,
+                                "mock": res.get("mock", not is_live),
+                                "asset_id": saved_asset["asset_id"],
+                                "provenance": provenance,
+                            },
+                        )
+
+                        history.record_transcript(
+                            text=transcript,
+                            session_id=session_id,
+                            is_final=True,
+                        )
+
+                        history.record_speech_operation(
+                            session_id=session_id,
+                            asset_id=saved_asset["asset_id"],
+                            operation_type="stt",
+                            model=res.get("model", active_config["model"]),
+                            language=active_config["language_code"],
+                            format=active_config["format"],
+                            status="completed",
+                            provenance=provenance,
+                            latency_ms=elapsed * 1000,
+                        )
+
+                        session_status = "completed"
+                        history.update_recording_session(
+                            session_id,
+                            status="completed",
+                            metadata_update={"duration_sec": duration_sec, "words": words},
                         )
 
                         await websocket.send_json({
@@ -1188,11 +1412,31 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                             "latency_sec": round(elapsed, 3),
                             "word_count": words,
                             "mock": res.get("mock", not is_live),
+                            "provenance": provenance,
+                            "asset_id": saved_asset["asset_id"],
+                            "audio_url": f"/api/audio/{saved_asset['filename']}",
                         })
                     except Exception as exc:
+                        logger.error("WebSocket STT transcription failed: %s", exc)
+                        session_status = "failed"
+                        history.record_speech_operation(
+                            session_id=session_id,
+                            asset_id=saved_asset["asset_id"],
+                            operation_type="stt",
+                            model=active_config["model"],
+                            language=active_config["language_code"],
+                            status="failed",
+                            error_code="STT_PROVIDER_ERROR",
+                            error_message="Speech recognition provider request failed",
+                        )
+                        history.update_recording_session(session_id, status="failed")
+
                         await websocket.send_json({
                             "type": "operation_failed",
-                            "error": f"Transcription error: {exc}",
+                            "error_code": "STT_PROVIDER_ERROR",
+                            "error": "Speech recognition provider request failed. Audio recording has been safely preserved.",
+                            "asset_id": saved_asset["asset_id"],
+                            "audio_url": f"/api/audio/{saved_asset['filename']}",
                         })
                     finally:
                         audio_buffer.clear()
@@ -1207,13 +1451,23 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                     if not tts_text:
                         await websocket.send_json({
                             "type": "operation_failed",
+                            "error_code": "EMPTY_TEXT",
                             "error": "Synthesis text cannot be empty.",
+                        })
+                        continue
+
+                    requested_live = int(payload.get("live", 0))
+                    if requested_live and not ALLOW_LIVE_API:
+                        await websocket.send_json({
+                            "type": "operation_failed",
+                            "error_code": "LIVE_EXECUTION_FORBIDDEN",
+                            "error": "Live provider execution is disabled by server policy (ALLOW_LIVE_API=0). Request denied.",
                         })
                         continue
 
                     voice = payload.get("voice", "Pranav")
                     speed = float(payload.get("speed", 1.0))
-                    is_live = bool(payload.get("live", 0))
+                    is_live = bool(requested_live)
 
                     await websocket.send_json({
                         "type": "tts_generation_started",
@@ -1231,28 +1485,45 @@ async def speech_websocket_endpoint(websocket: WebSocket):
 
                     try:
                         tts_bytes = gnani_client.call("tts", tts_payload, live=is_live, use_cache=True)
-                        try:
-                            with io.BytesIO(tts_bytes) as bio:
-                                info = sf.info(bio)
-                                tts_dur = info.duration
-                        except Exception:
-                            tts_dur = len(tts_text) * 0.08
+                        saved_tts = history.save_audio_asset(
+                            tts_bytes,
+                            asset_type="tts_generated",
+                            session_id=session_id,
+                        )
+                        tts_dur = saved_tts["duration_seconds"] or (len(tts_text) * 0.08)
+
+                        history.record_speech_operation(
+                            session_id=session_id,
+                            asset_id=saved_tts["asset_id"],
+                            operation_type="tts",
+                            model="timbre-v2.5",
+                            voice=voice,
+                            language=active_config["language_code"],
+                            status="completed",
+                            provenance="live" if is_live else "mock",
+                        )
 
                         await websocket.send_json({
                             "type": "tts_audio_ready",
                             "audio_base64": base64.b64encode(tts_bytes).decode("utf-8"),
+                            "audio_url": f"/api/audio/{saved_tts['filename']}",
+                            "asset_id": saved_tts["asset_id"],
                             "duration_sec": round(tts_dur, 2),
                             "voice": voice,
                             "char_count": len(tts_text),
                         })
                     except Exception as exc:
+                        logger.error("WebSocket TTS synthesis failed: %s", exc)
                         await websocket.send_json({
                             "type": "operation_failed",
-                            "error": f"TTS synthesis error: {exc}",
+                            "error_code": "TTS_PROVIDER_ERROR",
+                            "error": "Text-to-speech synthesis failed. Please verify voice configuration.",
                         })
 
                 elif action == "cancel":
                     audio_buffer.clear()
+                    session_status = "cancelled"
+                    history.update_recording_session(session_id, status="cancelled")
                     await websocket.send_json({
                         "type": "recording_cancelled",
                         "message": "Audio buffer cleared and recording stopped.",
@@ -1260,8 +1531,12 @@ async def speech_websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         logger.info("[WebSocket] Client disconnected: %s", session_id)
+        if session_status == "active":
+            history.update_recording_session(session_id, status="interrupted")
     except Exception as exc:
         logger.error("[WebSocket] Session error: %s", exc)
+        if session_status == "active":
+            history.update_recording_session(session_id, status="interrupted")
 
 
 # ---------------------------------------------------------
@@ -1343,11 +1618,13 @@ async def process_followup_call(req: FollowupProcessRequest, request: Request):
     """
     client_ip = request.client.host if request.client else "127.0.0.1"
     check_rate_limit(client_ip)
+    is_live = enforce_live_policy(req.live)
 
     data_dir = get_data_dir()
     audio_bytes: bytes | None = None
     transcript: str = ""
     scenario_match = None
+    saved_asset_id = None
 
     # Check if scenario_id or clip_id matches a pre-loaded scenario
     target_id = req.scenario_id or req.clip_id
@@ -1362,11 +1639,13 @@ async def process_followup_call(req: FollowupProcessRequest, request: Request):
         transcript = req.mock_transcript
     elif req.transcript:
         transcript = req.transcript
-    elif scenario_match and not req.live and scenario_match.get("dialogue_text"):
+    elif scenario_match and not is_live and scenario_match.get("dialogue_text"):
         transcript = scenario_match["dialogue_text"]
     elif req.audio_base64:
         try:
             audio_bytes = base64.b64decode(req.audio_base64)
+            asset = history.save_audio_asset(audio_bytes, asset_type="followup_input")
+            saved_asset_id = asset["asset_id"]
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid audio_base64 encoding.")
     elif target_id:
@@ -1399,8 +1678,13 @@ async def process_followup_call(req: FollowupProcessRequest, request: Request):
             if scenario_match:
                 payload["mock_transcript"] = scenario_match["dialogue_text"]
 
-            res = gnani_client.call("stt", payload, live=bool(req.live), use_cache=True)
+            res = gnani_client.call("stt", payload, live=is_live, use_cache=True)
             transcript = res.get("transcript", "")
+        except Exception as exc:
+            logger.error("Followup STT transcription failed: %s", exc)
+            if "504" in str(exc) or "timeout" in str(exc).lower():
+                raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Speech recognition provider timed out.")
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Speech recognition provider request failed.")
         finally:
             if temp_audio.exists():
                 try:
@@ -1430,6 +1714,7 @@ async def process_followup_call(req: FollowupProcessRequest, request: Request):
         "details": extracted,
         "suggested_reminder_text": extracted.get("reminder_template") or "",
         "extracted": extracted,
+        "asset_id": saved_asset_id,
     }
 
 
@@ -1438,6 +1723,7 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
     """Synthesizes verified follow-up reminder audio via Timbre and commits record to history."""
     client_ip = request.client.host if request.client else "127.0.0.1"
     check_rate_limit(client_ip)
+    is_live = enforce_live_policy(req.live)
 
     cust_name = req.customer or req.customer_name or "Customer"
     c_summary = req.summary or req.call_summary or "Confirmed follow-up commitments"
@@ -1450,12 +1736,7 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
     if len(clean_text) > 2000:
         raise HTTPException(status_code=400, detail="Reminder text exceeds 2,000 characters.")
 
-    data_dir = get_data_dir()
-    temp_dir = data_dir / "temp"
-    temp_dir.mkdir(parents=True, exist_ok=True)
-
     start_time = time.perf_counter()
-    is_live = bool(req.live)
 
     tts_payload = {
         "text": clean_text,
@@ -1470,19 +1751,16 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
         elapsed = time.perf_counter() - start_time
     except Exception as exc:
         logger.error("Follow-up reminder synthesis failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Reminder synthesis failed: {exc}")
+        if "504" in str(exc) or "timeout" in str(exc).lower():
+            raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Text-to-speech provider timed out. Please retry.")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Speech synthesis provider request failed. Please check voice configuration and retry.")
 
-    try:
-        with io.BytesIO(audio_bytes) as bio:
-            info = sf.info(bio)
-            duration_sec = info.duration
-    except Exception:
-        duration_sec = len(clean_text) * 0.08
-
-    filename = f"tts_followup_{hashlib.md5(f'{clean_text}_{req.voice}_{req.speed}'.encode()).hexdigest()[:16]}.wav"
-    audio_path = temp_dir / filename
-    with open(audio_path, "wb") as f:
-        f.write(audio_bytes)
+    # Save audio asset with collision-resistant UUID filename
+    saved_asset = history.save_audio_asset(audio_bytes, asset_type="followup_reminder")
+    filename = saved_asset["filename"]
+    duration_sec = saved_asset["duration_seconds"] or round(len(clean_text) * 0.08, 2)
+    duration_estimated = saved_asset["duration_estimated"]
+    provenance = "live" if is_live else "mock"
 
     # Record into persistent audit history
     hist_id = history.record_followup_history(
@@ -1502,8 +1780,26 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
             "call_summary": c_summary,
             "speed": req.speed,
             "mock": not is_live,
+            "provenance": provenance,
+            "asset_id": saved_asset["asset_id"],
             "operator_notes": req.operator_notes,
+            "duration_estimated": duration_estimated,
         },
+    )
+
+    # Record into relational followup_records table
+    history.record_followup_entry(
+        session_id=None,
+        customer_name=cust_name,
+        amount=c_amount,
+        due_date=req.due_date,
+        ptp_date=req.ptp_date,
+        concern=c_concern,
+        call_summary=c_summary,
+        reminder_text=clean_text,
+        voice=req.voice,
+        asset_id=saved_asset["asset_id"],
+        operator_notes=req.operator_notes,
     )
 
     b64_audio = base64.b64encode(audio_bytes).decode("ascii")
@@ -1512,6 +1808,7 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
         "status": "confirmed_and_synthesized",
         "record_id": hist_id,
         "history_id": hist_id,
+        "asset_id": saved_asset["asset_id"],
         "audio_url": f"/api/tts/audio/{filename}",
         "audio_b64": b64_audio,
         "filename": filename,
@@ -1521,6 +1818,7 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
         "voice": req.voice,
         "customer": cust_name,
         "reminder_text": clean_text,
+        "provenance": provenance,
         "confirmed_record": {
             "customer_name": cust_name,
             "amount": c_amount,

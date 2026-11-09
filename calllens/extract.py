@@ -402,19 +402,33 @@ def extract_followup_details(
             f"कृपया तुरंत संपर्क करें। धन्यवाद।"
         )
 
+    # Track missing fields strictly — never silently hallucinate or assume
+    missing_fields = []
+    if amount is None:
+        missing_fields.append("Overdue amount")
+    if due_day is None:
+        missing_fields.append("Due date")
+    if not ptp_date:
+        missing_fields.append("Promise-to-pay date")
+
     return {
         "amount": amount,
         "amount_formatted": amount_str,
+        "amount_detected": amount is not None,
         "due_day": due_day,
         "due_date_formatted": due_str,
+        "due_date_detected": due_day is not None,
         "ptp_date": ptp_date,
         "ptp_date_formatted": ptp_str,
+        "ptp_date_detected": bool(ptp_date),
+        "missing_fields": missing_fields,
         "customer_name": c_name,
         "concern": concern_info["label"],
         "concern_category": concern_info["category"],
         "call_summary": call_summary,
         "suggested_reminder": suggested_reminder,
-        "is_complete": (amount is not None and due_day is not None),
+        "reminder_template": suggested_reminder,
+        "is_complete": (amount is not None and due_day is not None and bool(ptp_date)),
     }
 
 

@@ -302,7 +302,7 @@
             <div class="takeaway-item">
               <span class="takeaway-label">Text-to-Speech Engine</span>
               <div class="takeaway-val">Gnani Timbre v2.5</div>
-              <span class="takeaway-sub">42 voices including Pranav & Kaveri</span>
+              <span class="takeaway-sub">7 curated Indic voices (Flagship Pranav & Kaveri)</span>
             </div>
             <div class="takeaway-item">
               <span class="takeaway-label">Telephony Stress Lab</span>
@@ -626,7 +626,7 @@
         <div class="panel-header-block">
           <div>
             <h2>Text-to-Speech Studio</h2>
-            <p class="panel-subtext">Synthesize natural Hindi and Hinglish speech using the official Gnani Timbre v2.5 voice catalog.</p>
+            <p class="panel-subtext">Synthesize natural Hindi and Hinglish speech using the 7 curated Gnani Timbre Indic voices (Flagship Pranav & Kaveri).</p>
           </div>
         </div>
 
@@ -810,7 +810,7 @@
         <div class="panel-header-block">
           <div>
             <h2>CallLens Follow-up Desk</h2>
-            <p class="panel-subtext">Enterprise human-in-the-loop debt collection speech intelligence workflow. Transcribe calls, extract actionable commitments, flag missing data, and synthesize respectful Hindi voice reminders.</p>
+            <p class="panel-subtext">Curated synthetic debt-collection scenarios for human-in-the-loop operator review and reminder generation. Transcribe calls, extract actionable commitments, flag missing data, and synthesize respectful Hindi voice reminders.</p>
           </div>
           <div class="header-pill-group">
             <span class="status-pill status-live">
@@ -861,19 +861,19 @@
             <label>Representative Banking Collection Scenarios:</label>
             <div class="scenario-chips-container" id="flw-scenario-chips">
               <button type="button" class="scenario-chip active" data-id="scenario_01">
-                <strong>Rahul Sharma</strong> — ₹15,000 (Salary Delay, PTP 12th)
+                <strong>Rahul Sharma</strong> — ₹50,000 (Salary Delay, PTP 10th)
               </button>
               <button type="button" class="scenario-chip" data-id="scenario_02">
-                <strong>Priya Verma</strong> — ₹8,500 (Medical Emergency, PTP 20th)
+                <strong>Priya Verma</strong> — ₹350,000 (Medical Emergency, PTP 20th)
               </button>
               <button type="button" class="scenario-chip" data-id="scenario_03">
-                <strong>Sunil Kumar</strong> — ₹22,000 (Missing Date — Flags Operator)
+                <strong>Sunil Kumar</strong> — ₹150,000 (Out of Town, Monday Commitment)
               </button>
               <button type="button" class="scenario-chip" data-id="scenario_04">
-                <strong>Rajesh Gupta</strong> — ₹5,400 (UPI Dispute, PTP 18th)
+                <strong>Rajesh Gupta</strong> — ₹225,000 (UPI Failure, PTP Tomorrow)
               </button>
               <button type="button" class="scenario-chip" data-id="scenario_05">
-                <strong>Anita Desai</strong> — ₹12,000 (Out of Town, PTP 15th)
+                <strong>Anita Desai</strong> — ₹75,500 (Fee Dispute — Missing PTP Date, Flags Operator)
               </button>
             </div>
           </div>
@@ -1459,6 +1459,43 @@
             <div class="safeguard-box">
               <h4>3. Automatic Header Redaction</h4>
               <p>All logging automatically scrubs <code>token</code>, <code>api-key</code>, and authorization headers.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="storage-diagnostics-card" style="margin-top: 24px;">
+          <div class="card-header">
+            <div>
+              <h3>Call Data Persistence & Storage Integrity Diagnostics</h3>
+              <p class="panel-subtext">Storage diagnostics tracking persisted recording sessions, SHA-256 audio assets, physical disk footprint, and database integrity.</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-storage">
+              <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+              </svg>
+              Refresh Storage Audit
+            </button>
+          </div>
+          <div class="kpi-grid" style="margin-top: 12px;">
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">Recording Sessions</span><span class="kpi-badge badge-indigo">Lifecycle</span></div>
+              <div class="kpi-number" id="diag-stat-sessions">-</div>
+              <div class="kpi-meta"><span class="kpi-detail">Interactive sessions</span></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">Persisted Audio Assets</span><span class="kpi-badge badge-green">SHA-256</span></div>
+              <div class="kpi-number" id="diag-stat-assets">-</div>
+              <div class="kpi-meta"><span class="kpi-detail">Recordings & TTS outputs</span></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">Disk Footprint</span><span class="kpi-badge badge-cyan">calllens-data</span></div>
+              <div class="kpi-number" id="diag-stat-disk">-</div>
+              <div class="kpi-meta"><span class="kpi-detail">Managed media storage</span></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-header"><span class="kpi-title">Storage Integrity</span><span class="kpi-badge badge-green" id="diag-integrity-badge">Healthy</span></div>
+              <div class="kpi-number" id="diag-stat-missing">0</div>
+              <div class="kpi-meta"><span class="kpi-detail" id="diag-integrity-detail">0 missing files detected</span></div>
             </div>
           </div>
         </section>

@@ -1279,8 +1279,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Storage Diagnostics Fetcher
+  async function loadStorageDiagnostics() {
+    try {
+      const res = await fetch('/api/storage/diagnostics');
+      if (!res.ok) return;
+      const stats = await res.json();
+      const elSessions = document.getElementById('diag-stat-sessions');
+      const elAssets = document.getElementById('diag-stat-assets');
+      const elDisk = document.getElementById('diag-stat-disk');
+      const elMissing = document.getElementById('diag-stat-missing');
+      const elBadge = document.getElementById('diag-integrity-badge');
+      const elDetail = document.getElementById('diag-integrity-detail');
+
+      if (elSessions) elSessions.textContent = stats.total_recording_sessions || 0;
+      if (elAssets) elAssets.textContent = stats.total_audio_assets || 0;
+      if (elDisk) elDisk.textContent = stats.storage_usage_mb ? `${stats.storage_usage_mb} MB` : '0 MB';
+      if (elMissing) elMissing.textContent = stats.missing_audio_files || 0;
+      if (elBadge && elDetail) {
+        if (stats.missing_audio_files > 0) {
+          elBadge.className = 'kpi-badge badge-red';
+          elBadge.textContent = 'Degraded';
+          elDetail.textContent = `${stats.missing_audio_files} missing files detected`;
+        } else {
+          elBadge.className = 'kpi-badge badge-green';
+          elBadge.textContent = 'Healthy';
+          elDetail.textContent = '0 missing files detected';
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load storage diagnostics:', err);
+    }
+  }
+
+  const btnRefreshStorage = document.getElementById('btn-refresh-storage');
+  if (btnRefreshStorage) {
+    btnRefreshStorage.addEventListener('click', loadStorageDiagnostics);
+  }
+
   // Render Diagnostics View
   function renderDiagnosticsView(data) {
+    loadStorageDiagnostics();
     const tbody = document.getElementById('diagnostics-log-body');
     if (!tbody || !data.accounting || !data.accounting.timeout_recoveries) return;
     tbody.innerHTML = '';
@@ -1604,7 +1643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         flwScenarios = data.scenarios || [];
         if (flwScenarios.length > 0 && customTranscript) {
-          customTranscript.value = flwScenarios[0].transcript || '';
+          customTranscript.value = flwScenarios[0].dialogue_text || flwScenarios[0].transcript || '';
         }
       }
     } catch (err) {
@@ -1620,7 +1659,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const found = flwScenarios.find(s => s.id === flwSelectedScenarioId);
         if (found && customTranscript) {
-          customTranscript.value = found.transcript || '';
+          customTranscript.value = found.dialogue_text || found.transcript || '';
         }
 
         // Reset downstream cards for fresh process
