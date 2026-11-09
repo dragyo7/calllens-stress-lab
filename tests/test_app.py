@@ -33,13 +33,12 @@ def test_get_health(client):
     assert "clean" in data["supported_conditions"]
 
 
-def test_default_mode_replays_live_and_reports_no_live_results_yet(client):
+def test_default_mode_replays_live_and_reports_no_live_results_yet(client, tmp_path, monkeypatch):
     """Verify default mode replays live runs and returns 'no live results yet' when DB has no live rows."""
-    clips_res = client.get("/api/clips").json()["clips"]
-    clip_id = clips_res[0]["id"]
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
     res = client.post(
         "/api/stress",
-        json={"clip_id": clip_id, "condition": "clean", "live": 0, "allow_mock": False},
+        json={"clip_id": "fleurs_01", "condition": "clean", "live": 0, "allow_mock": False},
     )
     assert res.status_code == 200
     data = res.json()

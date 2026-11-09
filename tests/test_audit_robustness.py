@@ -132,8 +132,9 @@ def test_missing_api_key_raises_client_error(monkeypatch):
     assert "GNANI_API_KEY environment variable is not set" in str(exc_info.value)
 
 
-def test_mock_fixture_unreachable_when_allow_mock_false(client):
+def test_mock_fixture_unreachable_when_allow_mock_false(client, tmp_path, monkeypatch):
     """Verify mock fixtures cannot be retrieved when allow_mock=False."""
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
     res = client.post(
         "/api/stress",
         json={"clip_id": "fleurs_01", "condition": "clean", "live": 0, "allow_mock": False},

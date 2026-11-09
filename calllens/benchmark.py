@@ -178,7 +178,7 @@ def run_benchmark(
         for cond in conditions:
             # Generate degraded audio if not exists
             deg_path = processed_audio_dir / f"{clip_id}_{cond}.wav"
-            if not deg_path.exists():
+            if not deg_path.exists() or deg_path.stat().st_mtime < orig_path.stat().st_mtime:
                 degrade.process_audio_file(orig_path, deg_path, condition=cond, clip_id=clip_id)
 
             info = sf.info(str(deg_path))
@@ -329,7 +329,7 @@ def run_benchmark(
 
         for cond in conditions:
             deg_path = processed_audio_dir / f"{clip_id}_{cond}.wav"
-            if not deg_path.exists():
+            if not deg_path.exists() or deg_path.stat().st_mtime < orig_path.stat().st_mtime:
                 degrade.process_audio_file(orig_path, deg_path, condition=cond, clip_id=clip_id)
 
             info = sf.info(str(deg_path))

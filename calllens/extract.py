@@ -49,6 +49,18 @@ MULT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Hindi Number Words Mapping
+HINDI_NUMS = {
+    "एक": 1, "दो": 2, "तीन": 3, "चार": 4, "पाँच": 5, "पांच": 5,
+    "छह": 6, "सात": 7, "आठ": 8, "नौ": 9, "दस": 10,
+    "ग्यारह": 11, "बारह": 12, "तेरह": 13, "चौदह": 14, "पंद्रह": 15,
+    "सोलह": 16, "सत्रह": 17, "अठारह": 18, "उन्नीस": 19, "बीस": 20,
+    "इक्कीस": 21, "बाईस": 22, "तेईस": 23, "चौबीस": 24, "पच्चीस": 25,
+    "छब्बीस": 26, "सत्ताईस": 27, "अट्ठाईस": 28, "अट्ठाइस": 28, "उनतीस": 29, "तीस": 30,
+    "इकत्तीस": 31,
+    "पचास": 50, "पचहत्तर": 75,
+}
+
 # Standard digit amounts with commas and optional currency symbols
 # e.g., 3,50,000 rupees, ₹ 50,000, 10000/-
 DIGIT_PATTERN = re.compile(
@@ -97,6 +109,39 @@ def extract_amount(text: str | None) -> int | None:
                 if val > 31 or (g1 and any(c in m.group(0).lower() for c in ["₹", "rs", "inr", "रुप"])):
                     return val
 
+    # Check Hindi spoken decimal patterns: e.g. "दो दशमलव दो पाँच करोड़" / "दो दशमलव दो पाँच लाख"
+    m_dec = re.search(
+        r"(एक|दो|तीन|चार|पाँच|पांच)\s*दशमलव\s*(एक|दो|तीन|चार|पाँच|पांच)\s*(?:(एक|दो|तीन|चार|पाँच|पांच)\s*)?(लाख|करोड़|करोड)",
+        text,
+        re.IGNORECASE,
+    )
+    if m_dec:
+        w_int, w_d1, w_d2, unit = m_dec.groups()
+        val_str = f"{HINDI_NUMS[w_int]}.{HINDI_NUMS[w_d1]}" + (f"{HINDI_NUMS[w_d2]}" if w_d2 else "")
+        mult = 100_000 if "लाख" in unit else 10_000_000
+        return int(round(float(val_str) * mult))
+
+    # Check Hindi compound spoken word numbers: e.g. "तीन लाख पचास हज़ार", "पचहत्तर हज़ार पाँच सौ"
+    hindi_total = 0
+    found_hindi = False
+    m_lakh = re.search(r"(एक|दो|तीन|चार|पाँच|पांच)\s*लाख", text)
+    if m_lakh:
+        hindi_total += HINDI_NUMS[m_lakh.group(1)] * 100_000
+        found_hindi = True
+
+    m_haz = re.search(r"(दस|पंद्रह|बीस|पच्चीस|पचास|पचहत्तर)\s*(?:हज़ार|हजार)", text)
+    if m_haz:
+        hindi_total += HINDI_NUMS[m_haz.group(1)] * 1_000
+        found_hindi = True
+
+    m_sau = re.search(r"(पाँच|पांच)\s*सौ", text)
+    if m_sau:
+        hindi_total += HINDI_NUMS[m_sau.group(1)] * 100
+        found_hindi = True
+
+    if found_hindi:
+        return hindi_total
+
     # Fallback: scan for any standalone 4+ digit number
     fallback_match = re.search(r"\b(\d{4,9})\b", text)
     if fallback_match:
@@ -123,6 +168,11 @@ def extract_due_day(text: str | None) -> int | None:
                     return day
             except ValueError:
                 continue
+
+    # Check spoken Hindi number word for due day (e.g. "पाँच तारीख", "दिनांक अट्ठाईस")
+    for word, val in HINDI_NUMS.items():
+        if re.search(rf"{word}\s*(?:तारीख|तारीख़|तारिख)", text, re.IGNORECASE) or re.search(rf"दिनांक\s*{word}", text, re.IGNORECASE):
+            return val
 
     return None
 

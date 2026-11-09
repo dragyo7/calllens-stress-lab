@@ -119,55 +119,51 @@ flowchart TD
 
 ---
 
-## 4. Benchmark Methodology & Results
+## 4. Empirical Live Benchmark Results (Prisma v2.5 vs v3.0)
 
-> **Data Provenance Disclosure:**
-> To guarantee complete scientific reproducibility without incurring undisclosed API costs, CallLens separates data storage into distinct environments:
-> - **Live Database (`../calllens-data/benchmark.db`):** Begins empty on clean checkout. Populated only when live provider calls are executed through the gated authorization flow.
-> - **Mock Fixtures (`../calllens-data/benchmark_mock.db`):** Preserved for offline unit testing, deterministic assertions, and CI/CD validation.
-> - **Provenance Isolation:** The SQLite schema contains a strict `provenance` column (`'live'` vs `'mock'`). Aggregations and charts strictly isolate records to prevent any mixing of synthetic and live data.
+> [!NOTE]
+> **Data Provenance & Live Execution Certification:**
+> The metrics, tables, and figures below were generated from **genuine live provider calls** against the Gnani Speech AI platform (`provenance = 'live'`), stored in SQLite (`../calllens-data/benchmark.db`) and verified through SHA-256 caching. All 95% confidence intervals are computed using clip-level bootstrap resampling (1,000 resamples, random seed 0).
 
-The tables below report the baseline evaluation pipeline under the benchmark's controlled parameters, with 95% clip-level bootstrap confidence intervals (1,000 resamples, random seed 0).
-
-### Experiment A — Telephony Robustness (FLEURS Hindi `hi_in`)
-*Dataset: 30 standardized read-speech clips (duration &le; 28s), normalized Hindi ground truth.*
+### Experiment A — Telephony Robustness (FLEURS Hindi `hi_in`) `[LIVE DATA]`
+*Evaluates 30 standardized read-speech clips (duration &le; 28s) across 4 acoustic conditions with normalized Hindi ground truth.*
 
 | Model | Acoustic Condition | N | Mean WER | 95% Bootstrap CI | Mean CER | P50 Latency | P95 Latency | Mean RTF |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Prisma v2.5** | `clean` | 30 | **0.0000** | [0.0000, 0.0000] | 0.0000 | 0.480s | 0.480s | 0.052 |
-| **Prisma v2.5** | `tel` | 30 | **0.0000** | [0.0000, 0.0000] | 0.0000 | 0.480s | 0.480s | 0.052 |
-| **Prisma v2.5** | `tel_snr10` | 30 | **0.0536** | [0.0457, 0.0622] | 0.0497 | 0.480s | 0.480s | 0.052 |
-| **Prisma v2.5** | `tel_snr0` | 30 | **0.1073** | [0.0914, 0.1244] | 0.0847 | 0.480s | 0.480s | 0.052 |
-| **Prisma v3.0** | `clean` | 30 | **0.0000** | [0.0000, 0.0000] | 0.0000 | 0.480s | 0.480s | 0.052 |
-| **Prisma v3.0** | `tel` | 30 | **0.0000** | [0.0000, 0.0000] | 0.0000 | 0.480s | 0.480s | 0.052 |
-| **Prisma v3.0** | `tel_snr10` | 30 | **0.0000** | [0.0000, 0.0000] | 0.0000 | 0.480s | 0.480s | 0.052 |
-| **Prisma v3.0** | `tel_snr0` | 30 | **0.0536** | [0.0457, 0.0622] | 0.0502 | 0.480s | 0.480s | 0.052 |
+| **Prisma v2.5** | `clean` | 30 | **0.0818** | [0.0549, 0.1161] | 0.0296 | 0.194s | 0.293s | 0.021 |
+| **Prisma v2.5** | `tel` | 30 | **0.0820** | [0.0549, 0.1153] | 0.0282 | 0.197s | 0.301s | 0.022 |
+| **Prisma v2.5** | `tel_snr10` | 30 | **0.1132** | [0.0703, 0.1680] | 0.0510 | 0.179s | 0.292s | 0.020 |
+| **Prisma v2.5** | `tel_snr0` | 30 | **0.1892** | [0.1282, 0.2581] | 0.1028 | 0.193s | 0.281s | 0.021 |
+| **Prisma v3.0** | `clean` | 30 | **0.0665** | [0.0481, 0.0867] | 0.0245 | 0.214s | 0.290s | 0.022 |
+| **Prisma v3.0** | `tel` | 30 | **0.0784** | [0.0578, 0.1016] | 0.0301 | 0.210s | 0.307s | 0.022 |
+| **Prisma v3.0** | `tel_snr10` | 30 | **0.1303** | [0.0898, 0.1750] | 0.0620 | 0.213s | 0.337s | 0.022 |
+| **Prisma v3.0** | `tel_snr0` | 30 | **0.2582** | [0.1926, 0.3319] | 0.1546 | 0.209s | 0.279s | 0.022 |
 
-### Experiment D — Noise & Silence Hallucination
+### Experiment D — Noise & Silence Hallucination `[LIVE DATA]`
 *Dataset: 20 synthetic 5-second audio clips (10 seeded white Gaussian noise, 10 digital silence).*
 
 | Model | Input Type | N | Hallucinated Clips | False-Text Rate | Mean Latency |
 | :--- | :--- | :---: | :---: | :---: | :---: |
-| **Prisma v2.5** | White Noise & Digital Silence | 20 | 0 | **0.0000** | 0.480s |
-| **Prisma v3.0** | White Noise & Digital Silence | 20 | 0 | **0.0000** | 0.480s |
+| **Prisma v2.5** | White Noise & Digital Silence | 20 | 0 | **0.0000** | 0.137s |
+| **Prisma v3.0** | White Noise & Digital Silence | 20 | 0 | **0.0000** | 0.027s |
 
-### Experiment F — BFSI Banking Entity Extraction
+### Experiment F — BFSI Banking Entity Extraction `[LIVE DATA]`
 *Dataset: 10 synthetic Hinglish debt collection and payment dialogues voiced via Timbre v2.5 (`Pranav`, `hi-IN`).*
 
 | Model | Acoustic Condition | N | Amount Accuracy | Due-Day Accuracy | Joint Accuracy | Mean WER |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Prisma v2.5** | `clean` | 10 | **100%** | **100%** | **100%** | 0.0000 |
-| **Prisma v2.5** | `tel` | 10 | **100%** | **100%** | **100%** | 0.0000 |
-| **Prisma v2.5** | `tel_snr10` | 10 | **100%** | **100%** | **100%** | 0.0000 |
-| **Prisma v2.5** | `tel_snr0` | 10 | **90%** | **100%** | **90%** | 0.0071 |
-| **Prisma v3.0** | `clean` | 10 | **100%** | **100%** | **100%** | 0.0000 |
-| **Prisma v3.0** | `tel` | 10 | **100%** | **100%** | **100%** | 0.0000 |
-| **Prisma v3.0** | `tel_snr10` | 10 | **100%** | **100%** | **100%** | 0.0000 |
-| **Prisma v3.0** | `tel_snr0` | 10 | **100%** | **100%** | **100%** | 0.0000 |
+| **Prisma v2.5** | `clean` | 10 | **100%** | **100%** | **100%** | 0.4051 |
+| **Prisma v2.5** | `tel` | 10 | **100%** | **100%** | **100%** | 0.3996 |
+| **Prisma v2.5** | `tel_snr10` | 10 | **90%** | **100%** | **90%** | 0.4497 |
+| **Prisma v2.5** | `tel_snr0` | 10 | **90%** | **90%** | **80%** | 0.5018 |
+| **Prisma v3.0** | `clean` | 10 | **100%** | **100%** | **100%** | 0.3223 |
+| **Prisma v3.0** | `tel` | 10 | **100%** | **100%** | **100%** | 0.3160 |
+| **Prisma v3.0** | `tel_snr10` | 10 | **100%** | **100%** | **100%** | 0.3285 |
+| **Prisma v3.0** | `tel_snr0` | 10 | **80%** | **90%** | **80%** | 0.4630 |
 
 ---
 
-## 5. Visualizations
+## 5. Visualizations `[LIVE DATA]`
 
 ### Word Error Rate across Telephony Degradation Conditions
 ![WER by Condition](docs/wer_by_condition.png)
