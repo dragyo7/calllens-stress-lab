@@ -12,19 +12,23 @@
   - Initialized git repository with robust `.gitignore`.
   - Added package layout (`calllens`, `scripts`, `tests`, `app`, `docs`).
   - Added `tests/test_scaffold.py` and confirmed passing pytest suite.
+- M1 API Client completed:
+  - Implemented `calllens/gnani_client.py` with centralized interface, SHA-256 caching, live cap enforcement (`MAX_LIVE_CALLS`), max 2 concurrency control, bounded retries (exponential backoff for 429/5xx), secret redacting logger, and mock mode fallback.
+  - Implemented `scripts/usage_probe.py` supporting dry-run/mock mode and `--live` execution.
+  - Added unit test suite in `tests/test_client.py` (all 10 tests passing across suite).
 
 ## In progress
-- M1 API Client implementation (`calllens/gnani_client.py` and unit tests).
+- GATE G1: Awaiting user approval for 4 live probe calls.
 
 ## Broken or risky
-- No live calls until explicit user approval at Gate G1.
-- `MAX_LIVE_CALLS` protection and caching must be strictly verified with unit tests.
+- Live calls prohibited without explicit user approval.
+- Currently running in MOCK mode until Gate G1 decision.
 
 ## Next
-- Implement `calllens/gnani_client.py` with caching, mock mode, rate limit backoff, redact logging, and live-call protection.
-- Implement `scripts/usage_probe.py` supporting mock mode and guarded `--live`.
-- Write unit tests in `tests/test_client.py`.
-- Present Gate G1 plan and wait for explicit user approval.
+- Present Gate G1 plan to user.
+- Upon approval, execute `scripts/usage_probe.py --live` and record metrics.
+- Proceed to M2 (Data Engineering: FLEURS fetch, noise/utterance generation, format pilot).
+
 
 ## Do not touch
 - `.env` and all secret values.
