@@ -11,6 +11,12 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
+# Local agent state (not project source)
+.agent/
+.agents/
+.claude/
+.antigravity/
+
 # Runtime/cache/data (keep outside repo where possible)
 .cache/
 data/

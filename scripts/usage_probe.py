@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 import os
 import sys
 import time
@@ -47,14 +48,32 @@ def run_probe(live: bool = False) -> None:
     probe_dir = data_dir / "probe"
     probe_dir.mkdir(parents=True, exist_ok=True)
 
-    clip1 = generate_probe_audio(probe_dir / "probe_clip_1.wav", freq=440.0, duration_sec=2.0)
-    clip2 = generate_probe_audio(probe_dir / "probe_clip_2.wav", freq=880.0, duration_sec=2.5)
+    # Prefer verified short FLEURS speech clips if present, otherwise fall back to synthetic audio
+    fleurs_manifest_path = data_dir / "fleurs" / "manifest.json"
+    if fleurs_manifest_path.exists():
+        with open(fleurs_manifest_path, "r", encoding="utf-8") as f:
+            fleurs_data = json.load(f)
+        if len(fleurs_data) >= 2 and Path(fleurs_data[0]["file_path"]).exists() and Path(fleurs_data[1]["file_path"]).exists():
+            clip1 = Path(fleurs_data[0]["file_path"])
+            clip2 = Path(fleurs_data[1]["file_path"])
+            label1 = f"{fleurs_data[0]['clip_id']} ({fleurs_data[0]['duration_sec']:.1f}s Hindi)"
+            label2 = f"{fleurs_data[1]['clip_id']} ({fleurs_data[1]['duration_sec']:.1f}s Hindi)"
+        else:
+            clip1 = generate_probe_audio(probe_dir / "probe_clip_1.wav", freq=440.0, duration_sec=2.0)
+            clip2 = generate_probe_audio(probe_dir / "probe_clip_2.wav", freq=880.0, duration_sec=2.5)
+            label1 = "probe_clip_1 (440Hz 2.0s)"
+            label2 = "probe_clip_2 (880Hz 2.5s)"
+    else:
+        clip1 = generate_probe_audio(probe_dir / "probe_clip_1.wav", freq=440.0, duration_sec=2.0)
+        clip2 = generate_probe_audio(probe_dir / "probe_clip_2.wav", freq=880.0, duration_sec=2.5)
+        label1 = "probe_clip_1 (440Hz 2.0s)"
+        label2 = "probe_clip_2 (880Hz 2.5s)"
 
     calls = [
-        {"name": "Probe 1: Clip 1 (440Hz 2.0s)", "clip": clip1, "model": None, "label": "Prisma v2.5", "format": "verbatim"},
-        {"name": "Probe 2: Clip 1 (440Hz 2.0s)", "clip": clip1, "model": "prisma-v3.0", "label": "Prisma v3.0", "format": "verbatim"},
-        {"name": "Probe 3: Clip 2 (880Hz 2.5s)", "clip": clip2, "model": None, "label": "Prisma v2.5", "format": "verbatim"},
-        {"name": "Probe 4: Clip 2 (880Hz 2.5s)", "clip": clip2, "model": "prisma-v3.0", "label": "Prisma v3.0", "format": "verbatim"},
+        {"name": f"Probe 1: {label1}", "clip": clip1, "model": None, "label": "Prisma v2.5", "format": "verbatim"},
+        {"name": f"Probe 2: {label1}", "clip": clip1, "model": "prisma-v3.0", "label": "Prisma v3.0", "format": "verbatim"},
+        {"name": f"Probe 3: {label2}", "clip": clip2, "model": None, "label": "Prisma v2.5", "format": "verbatim"},
+        {"name": f"Probe 4: {label2}", "clip": clip2, "model": "prisma-v3.0", "label": "Prisma v3.0", "format": "verbatim"},
     ]
 
     print("=" * 60)
@@ -117,6 +136,21 @@ def run_probe(live: bool = False) -> None:
     print(f"  Cache Hits:         {accounting.cache_hits}")
     print(f"  Mock Calls:         {accounting.mock_calls}")
     print("=" * 60)
+
+    if len(results) == 4 and all(r.get("success") for r in results):
+        print("\nComparative Analysis (v2.5 vs v3.0):")
+        c1_v25 = results[0].get("transcript", "")
+        c1_v30 = results[1].get("transcript", "")
+        print(f"  Clip 1 - Prisma v2.5 Latency: {results[0].get('latency_sec', 0):.3f}s | Transcript: '{c1_v25}'")
+        print(f"  Clip 1 - Prisma v3.0 Latency: {results[1].get('latency_sec', 0):.3f}s | Transcript: '{c1_v30}'")
+        print(f"  Clip 1 - Outputs differ:     {c1_v25 != c1_v30}")
+        c2_v25 = results[2].get("transcript", "")
+        c2_v30 = results[3].get("transcript", "")
+        print(f"  Clip 2 - Prisma v2.5 Latency: {results[2].get('latency_sec', 0):.3f}s | Transcript: '{c2_v25}'")
+        print(f"  Clip 2 - Prisma v3.0 Latency: {results[3].get('latency_sec', 0):.3f}s | Transcript: '{c2_v30}'")
+        print(f"  Clip 2 - Outputs differ:     {c2_v25 != c2_v30}")
+        print(f"  Prisma v2.5 accepted explicit format 'verbatim': {bool(results[0].get('success') and results[2].get('success'))}")
+        print("=" * 60)
 
 
 if __name__ == "__main__":

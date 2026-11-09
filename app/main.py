@@ -39,6 +39,7 @@ from pydantic import BaseModel, Field
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from calllens import degrade, extract, gnani_client, metrics
+from calllens.benchmark import BenchmarkResult, get_db_session
 from calllens.gnani_client import accounting
 
 logger = logging.getLogger("calllens.app")
@@ -71,8 +72,9 @@ _request_timestamps: dict[str, list[float]] = defaultdict(list)
 class StressRequest(BaseModel):
     clip_id: str | None = Field(default=None, description="Clip ID from dataset")
     condition: str = Field(default="clean", description="Acoustic condition: clean, tel, tel_snr10, tel_snr0")
-    live: int = Field(default=0, description="1 for live API call, 0 for mock/cached")
+    live: int = Field(default=0, description="1 for live API call, 0 for replay of recorded live runs")
     audio_base64: str | None = Field(default=None, description="Optional raw audio base64 encoded")
+    allow_mock: bool | None = Field(default=None, description="Allow mock fixture fallback (test-only)")
 
 
 def check_rate_limit(client_ip: str) -> None:
@@ -92,6 +94,85 @@ def get_data_dir() -> Path:
     return Path(os.getenv("DATA_DIR", "../calllens-data"))
 
 
+def get_replay_live_results(clip_id: str, condition: str, data_dir: Path) -> dict[str, Any] | None:
+    db_path = data_dir / "benchmark.db"
+    if not db_path.exists():
+        return None
+    try:
+        session = get_db_session(f"sqlite:///{db_path}")
+        recs = session.query(BenchmarkResult).filter_by(
+            clip_id=clip_id,
+            condition=condition,
+            provenance="live",
+        ).all()
+        session.close()
+        if not recs:
+            return None
+
+        v25 = next((r for r in recs if r.model == "prisma-v2.5"), None)
+        v30 = next((r for r in recs if r.model == "prisma-v3.0"), None)
+        if not v25 and not v30:
+            return None
+
+        ref = v25.reference_text if v25 else (v30.reference_text if v30 else "")
+
+        res_v25 = None
+        if v25:
+            res_v25 = {
+                "model": "Prisma v2.5 (default)",
+                "format": v25.format,
+                "transcript": v25.hypothesis_text or "",
+                "wer": v25.wer,
+                "cer": v25.cer,
+                "latency_sec": round(v25.latency_sec, 3),
+                "from_cache": v25.from_cache,
+                "mock": False,
+                "provenance": "live",
+                "extracted_entities": {
+                    "amount": v25.extracted_amount,
+                    "due_day": v25.extracted_due_day,
+                },
+            }
+
+        res_v30 = None
+        if v30:
+            res_v30 = {
+                "model": "Prisma v3.0 (opt-in)",
+                "format": v30.format,
+                "transcript": v30.hypothesis_text or "",
+                "wer": v30.wer,
+                "cer": v30.cer,
+                "latency_sec": round(v30.latency_sec, 3),
+                "from_cache": v30.from_cache,
+                "mock": False,
+                "provenance": "live",
+                "extracted_entities": {
+                    "amount": v30.extracted_amount,
+                    "due_day": v30.extracted_due_day,
+                },
+            }
+
+        return {
+            "success": True,
+            "has_live_results": True,
+            "condition": condition,
+            "reference_text": ref,
+            "live_mode": False,
+            "mode": "replay_live",
+            "mode_label": "Replay of recorded live runs",
+            "provenance": "live",
+            "prisma_v25": res_v25,
+            "prisma_v30": res_v30,
+            "ground_truth_entities": {
+                "amount": v25.gt_amount if v25 else (v30.gt_amount if v30 else None),
+                "due_day": v25.gt_due_day if v25 else (v30.gt_due_day if v30 else None),
+            } if ((v25 and (v25.gt_amount or v25.gt_due_day)) or (v30 and (v30.gt_amount or v30.gt_due_day))) else None,
+        }
+    except Exception as exc:
+        logger.error("Error retrieving recorded live run from DB: %s", exc)
+        return None
+
+
 @app.get("/")
 def get_index():
     return FileResponse(STATIC_DIR / "index.html")
@@ -99,6 +180,16 @@ def get_index():
 
 @app.get("/api/health")
 def get_health():
+    db_path = get_data_dir() / "benchmark.db"
+    live_count = 0
+    if db_path.exists():
+        try:
+            session = get_db_session(f"sqlite:///{db_path}")
+            live_count = session.query(BenchmarkResult).filter_by(provenance="live").count()
+            session.close()
+        except Exception:
+            live_count = 0
+
     return {
         "status": "healthy",
         "service": "CallLens Stress Lab",
@@ -111,7 +202,9 @@ def get_health():
         "live_calls_made": accounting.live_calls,
         "cache_hits": accounting.cache_hits,
         "mock_calls": accounting.mock_calls,
-        "default_mode": "mock",
+        "default_mode": "replay_live",
+        "default_mode_label": "Replay of recorded live runs",
+        "live_rows_count": live_count,
     }
 
 
@@ -136,6 +229,8 @@ def list_clips():
 
     # 2. BFSI clips
     bfsi_manifest = data_dir / "bfsi" / "manifest.json"
+    if not bfsi_manifest.exists() and (data_dir / "bfsi_mock" / "manifest.json").exists():
+        bfsi_manifest = data_dir / "bfsi_mock" / "manifest.json"
     if bfsi_manifest.exists():
         with open(bfsi_manifest, "r", encoding="utf-8") as f:
             for item in json.load(f):
@@ -214,6 +309,49 @@ async def run_stress_test(request: Request):
         )
 
     data_dir = get_data_dir()
+    is_live = bool(req_data.live)
+
+    # Determine mock allowance (mock fixtures are reachable only from test suite)
+    allow_mock_header = request.headers.get("x-allow-mock")
+    if req_data.allow_mock is not None:
+        can_use_mock = req_data.allow_mock
+    elif allow_mock_header is not None:
+        can_use_mock = (allow_mock_header == "1" or allow_mock_header.lower() == "true")
+    else:
+        can_use_mock = ("pytest" in sys.modules)
+
+    # In default mode (live == 0), if clip_id is provided, check if recorded live results exist
+    if not is_live and req_data.clip_id:
+        replay_res = get_replay_live_results(req_data.clip_id, req_data.condition, data_dir)
+        if replay_res:
+            return replay_res
+
+        # If no recorded live results exist and mock is NOT permitted:
+        if not can_use_mock:
+            return {
+                "success": True,
+                "has_live_results": False,
+                "message": "no live results yet",
+                "detail": f"No live results yet. Stored live benchmark runs have not been recorded in benchmark.db for clip '{req_data.clip_id}' under condition '{req_data.condition}'.",
+                "mode": "replay_live",
+                "mode_label": "Replay of recorded live runs",
+                "provenance": "live",
+                "clip_id": req_data.clip_id,
+                "condition": req_data.condition,
+            }
+
+    if not is_live and not can_use_mock:
+        return {
+            "success": True,
+            "has_live_results": False,
+            "message": "no live results yet",
+            "detail": "No live results yet. Replay mode requires recorded live runs from benchmark.db.",
+            "mode": "replay_live",
+            "mode_label": "Replay of recorded live runs",
+            "provenance": "live",
+            "condition": req_data.condition,
+        }
+
     temp_dir = data_dir / "temp"
     temp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -225,7 +363,7 @@ async def run_stress_test(request: Request):
     if raw_audio_bytes is not None:
         if len(raw_audio_bytes) > MAX_UPLOAD_BYTES:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"File exceeds maximum upload size of {MAX_UPLOAD_BYTES / (1024*1024):.0f} MB.",
             )
 
@@ -239,7 +377,6 @@ async def run_stress_test(request: Request):
                 detail="Invalid or corrupt audio file. Unable to decode audio stream.",
             )
 
-
         if duration > MAX_AUDIO_DURATION_SEC:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -252,7 +389,7 @@ async def run_stress_test(request: Request):
 
     elif req_data.clip_id:
         found = False
-        for manifest_name, cat in [("fleurs", "fleurs"), ("bfsi", "bfsi"), ("noise_silence", "noise_silence")]:
+        for manifest_name, cat in [("fleurs", "fleurs"), ("bfsi", "bfsi"), ("bfsi_mock", "bfsi_mock"), ("noise_silence", "noise_silence")]:
             mpath = data_dir / cat / "manifest.json"
             if mpath.exists():
                 with open(mpath, "r", encoding="utf-8") as f:
@@ -260,6 +397,8 @@ async def run_stress_test(request: Request):
                     for item in manifest:
                         if item["clip_id"] == req_data.clip_id:
                             input_audio_path = Path(item["file_path"])
+                            if not input_audio_path.exists() and (data_dir / cat / input_audio_path.name).exists():
+                                input_audio_path = data_dir / cat / input_audio_path.name
                             reference_text = item.get("raw_transcription") or item.get("text", "")
                             gt_amount = item.get("amount")
                             gt_due_day = item.get("due_day")
@@ -283,8 +422,6 @@ async def run_stress_test(request: Request):
 
     degraded_path = temp_dir / f"{input_audio_path.stem}_{req_data.condition}.wav"
     degrade.process_audio_file(input_audio_path, degraded_path, condition=req_data.condition, clip_id=input_audio_path.stem)
-
-    is_live = bool(req_data.live)
 
     payload_v25 = {
         "audio": degraded_path,
@@ -325,9 +462,13 @@ async def run_stress_test(request: Request):
 
     return {
         "success": True,
+        "has_live_results": is_live,
         "condition": req_data.condition,
         "reference_text": reference_text,
         "live_mode": is_live,
+        "mode": "live_api" if is_live else "mock_fixture",
+        "mode_label": "Live API Call" if is_live else "Mock Fixture (Test Only)",
+        "provenance": "live" if is_live else "mock",
         "prisma_v25": {
             "model": "Prisma v2.5 (default)",
             "format": "verbatim",
@@ -337,6 +478,7 @@ async def run_stress_test(request: Request):
             "latency_sec": round(res_v25.get("end_to_end_latency", 0.48), 3),
             "from_cache": res_v25.get("from_cache", False),
             "mock": res_v25.get("mock", False),
+            "provenance": "live" if is_live else "mock",
             "extracted_entities": entities_v25,
         },
         "prisma_v30": {
@@ -348,6 +490,7 @@ async def run_stress_test(request: Request):
             "latency_sec": round(res_v30.get("end_to_end_latency", 0.48), 3),
             "from_cache": res_v30.get("from_cache", False),
             "mock": res_v30.get("mock", False),
+            "provenance": "live" if is_live else "mock",
             "extracted_entities": entities_v30,
         },
         "ground_truth_entities": {

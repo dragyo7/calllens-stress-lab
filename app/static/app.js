@@ -121,6 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   function displayResults(data) {
+    if (data.has_live_results === false || !data.prisma_v25) {
+      resultsSection.classList.add('hidden');
+      showError(data.message || 'no live results yet');
+      return;
+    }
+    hideError();
+    resultsSection.classList.remove('hidden');
+
     // Reference card
     if (data.reference_text) {
       refText.textContent = data.reference_text;

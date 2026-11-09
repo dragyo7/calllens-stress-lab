@@ -22,7 +22,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -81,7 +81,8 @@ class BenchmarkResult(Base):
     is_hallucinated = Column(Boolean, nullable=True)
     from_cache = Column(Boolean, default=False)
     mock = Column(Boolean, default=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    provenance = Column(String(16), nullable=False, default="live")  # 'live' or 'mock'
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 def get_db_session(db_url: str):
@@ -185,11 +186,13 @@ def run_benchmark(
 
             for m in models:
                 # Check DB for existing record (resumable)
+                prov_filter = "live" if live else "mock"
                 existing = session.query(BenchmarkResult).filter_by(
                     experiment="A",
                     clip_id=clip_id,
                     condition=cond,
                     model=m["name"],
+                    provenance=prov_filter,
                 ).first()
 
                 if existing:
@@ -231,6 +234,7 @@ def run_benchmark(
                 wer_val = metrics.compute_wer(raw_ref, hyp)
                 cer_val = metrics.compute_cer(raw_ref, hyp)
 
+                prov_val = "live" if (live and not res.get("mock", False)) else "mock"
                 rec = BenchmarkResult(
                     experiment="A",
                     clip_id=clip_id,
@@ -248,6 +252,7 @@ def run_benchmark(
                     rtf=round(lat / max(dur, 0.01), 4),
                     from_cache=res.get("from_cache", False),
                     mock=res.get("mock", False),
+                    provenance=prov_val,
                 )
                 session.add(rec)
                 session.commit()
@@ -262,11 +267,13 @@ def run_benchmark(
         dur = info.duration
 
         for m in models:
+            prov_filter = "live" if live else "mock"
             existing = session.query(BenchmarkResult).filter_by(
                 experiment="D",
                 clip_id=clip_id,
                 condition="clean",
                 model=m["name"],
+                provenance=prov_filter,
             ).first()
 
             if existing:
@@ -287,6 +294,7 @@ def run_benchmark(
             norm_hyp = metrics.normalize_text(hyp)
             hallucinated = (norm_hyp != "")
 
+            prov_val = "live" if (live and not res.get("mock", False)) else "mock"
             rec = BenchmarkResult(
                 experiment="D",
                 clip_id=clip_id,
@@ -303,6 +311,7 @@ def run_benchmark(
                 rtf=round(lat / max(dur, 0.01), 4),
                 from_cache=res.get("from_cache", False),
                 mock=res.get("mock", False),
+                provenance=prov_val,
             )
             session.add(rec)
             session.commit()
@@ -327,11 +336,13 @@ def run_benchmark(
             dur = info.duration
 
             for m in models:
+                prov_filter = "live" if live else "mock"
                 existing = session.query(BenchmarkResult).filter_by(
                     experiment="F",
                     clip_id=clip_id,
                     condition=cond,
                     model=m["name"],
+                    provenance=prov_filter,
                 ).first()
 
                 if existing:
@@ -362,6 +373,7 @@ def run_benchmark(
                 wer_val = metrics.compute_wer(raw_ref, hyp)
                 cer_val = metrics.compute_cer(raw_ref, hyp)
 
+                prov_val = "live" if (live and not res.get("mock", False)) else "mock"
                 rec = BenchmarkResult(
                     experiment="F",
                     clip_id=clip_id,
@@ -385,6 +397,7 @@ def run_benchmark(
                     rtf=round(lat / max(dur, 0.01), 4),
                     from_cache=res.get("from_cache", False),
                     mock=res.get("mock", False),
+                    provenance=prov_val,
                 )
                 session.add(rec)
                 session.commit()
@@ -393,8 +406,9 @@ def run_benchmark(
     print(f"\nBenchmark completed. Total records processed/verified: {completed_count}")
 
     # Generate Statistical Report and Charts
-    generate_summary_report(session, output_report_path)
-    generate_charts(session, chart_dir)
+    target_prov = "live" if live else "mock"
+    generate_summary_report(session, output_report_path, provenance=target_prov)
+    generate_charts(session, chart_dir, provenance=target_prov)
 
     return {
         "total_evaluations": completed_count,
@@ -404,16 +418,36 @@ def run_benchmark(
     }
 
 
-def generate_summary_report(session, report_path: Path) -> None:
-    """Generates markdown report with 95% bootstrap CIs and sample sizes."""
+def generate_summary_report(session, report_path: Path, provenance: str = "live") -> None:
+    """Generates markdown report strictly filtered by provenance ('live' or 'mock').
+    Ensures that mock and live data are never mixed in any aggregation.
+    """
+    total_recs = session.query(BenchmarkResult).filter_by(provenance=provenance).count()
+    if total_recs == 0:
+        lines = [
+            f"# CallLens Stress Lab — Benchmark Results ({provenance.upper()} DATA)",
+            "",
+            f"> Generated on: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            f"> Data Provenance Filter: {provenance.upper()} (Strict Isolation)",
+            "",
+            f"**No {provenance} results yet.**",
+            "",
+            f"The database contains 0 records matching provenance '{provenance}'. No mock data is shown or mixed with live results.",
+        ]
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        print(f"Summary report generated: {report_path} (0 {provenance} records)")
+        return
+
     lines = [
-        "# CallLens Stress Lab — Benchmark Results",
+        f"# CallLens Stress Lab — Benchmark Results ({provenance.upper()} DATA)",
         "",
-        f"> Generated on: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+        f"> Generated on: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
+        f"> Data Provenance: {provenance.upper()} (Strict Isolation - No Mock Data Mixed)",
         "",
         "## Summary Overview",
         "",
-        "This report documents experimental evaluations comparing **Gnani Prisma v2.5** and **Gnani Prisma v3.0** under clean and simulated telephony degradation conditions.",
+        f"This report documents experimental evaluations comparing **Gnani Prisma v2.5** and **Gnani Prisma v3.0** under clean and simulated telephony degradation conditions ({provenance.upper()} provenance).",
         "",
         "**Important Methodology Notice:** Telephony channel degradation was applied deterministically to read speech (FLEURS) and synthetic TTS speech (Timbre v2.5). This evaluates acoustic robustness under simulated channel degradation and noise; it does not replace testing on real human customer call center recordings.",
         "",
@@ -433,6 +467,7 @@ def generate_summary_report(session, report_path: Path) -> None:
                 experiment="A",
                 model=model_name,
                 condition=cond,
+                provenance=provenance,
             ).all()
 
             if not recs:
@@ -467,6 +502,7 @@ def generate_summary_report(session, report_path: Path) -> None:
         recs = session.query(BenchmarkResult).filter_by(
             experiment="D",
             model=model_name,
+            provenance=provenance,
         ).all()
 
         if recs:
@@ -495,6 +531,7 @@ def generate_summary_report(session, report_path: Path) -> None:
                 experiment="F",
                 model=model_name,
                 condition=cond,
+                provenance=provenance,
             ).all()
 
             if not recs:
@@ -517,8 +554,15 @@ def generate_summary_report(session, report_path: Path) -> None:
     print(f"Summary report generated: {report_path}")
 
 
-def generate_charts(session, chart_dir: Path) -> None:
-    """Generates publication-quality charts for documentation and README."""
+def generate_charts(session, chart_dir: Path, provenance: str = "live") -> None:
+    """Generates publication-quality charts strictly from records matching provenance.
+    Ensures no mock data is mixed with live data.
+    """
+    total_recs = session.query(BenchmarkResult).filter_by(provenance=provenance).count()
+    if total_recs == 0:
+        print(f"No {provenance} records found in database. Skipping chart generation to prevent misleading visualizations.")
+        return
+
     conditions = ["clean", "tel", "tel_snr10", "tel_snr0"]
     models = ["prisma-v2.5", "prisma-v3.0"]
 
@@ -534,6 +578,7 @@ def generate_charts(session, chart_dir: Path) -> None:
                 experiment="A",
                 model=m,
                 condition=c,
+                provenance=provenance,
             ).all()
 
             if recs:
@@ -581,7 +626,7 @@ def generate_charts(session, chart_dir: Path) -> None:
     )
 
     ax.set_ylabel("Word Error Rate (WER)")
-    ax.set_title("Hindi Speech Recognition: WER across Degradation Conditions (95% CI)")
+    ax.set_title(f"Hindi Speech Recognition: WER across Degradation Conditions ({provenance.upper()} Data, 95% CI)")
     ax.set_xticks(x)
     ax.set_xticklabels(["Clean\n(16kHz)", "Telephony\n(300-3400Hz)", "Tel + 10dB SNR\n(White Noise)", "Tel + 0dB SNR\n(Heavy Noise)"])
     ax.legend(frameon=True)
@@ -621,7 +666,7 @@ def generate_charts(session, chart_dir: Path) -> None:
 
     ax.set_xlabel("P95 Latency (seconds)")
     ax.set_ylabel("Word Error Rate (WER)")
-    ax.set_title("CallLens: WER vs P95 Latency Trade-off")
+    ax.set_title(f"CallLens: WER vs P95 Latency Trade-off ({provenance.upper()} Data)")
     ax.legend(frameon=True)
     ax.grid(True, linestyle="--", alpha=0.3)
 
