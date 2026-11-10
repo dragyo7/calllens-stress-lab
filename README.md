@@ -3,12 +3,12 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Tests: 136 Passing](https://img.shields.io/badge/tests-136%20passed-brightgreen.svg)]()
+[![Tests: 137 Passing](https://img.shields.io/badge/tests-137%20passed-brightgreen.svg)]()
 [![Safety Cap: Enforced](https://img.shields.io/badge/safety--cap-enforced-orange.svg)]()
 [![Provenance: Isolated](https://img.shields.io/badge/provenance-isolated-blueviolet.svg)]()
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 
-> **Notice & Scope Clarification:** CallLens evaluates automatic speech recognition (ASR) robustness using **read speech (FLEURS Hindi `hi_in`)** and **synthetic TTS speech (Gnani Timbre v2.5)** under simulated acoustic degradation (telephony bandpass 300–3400 Hz, 8 kHz G.711 &mu;-law companding, and calibrated Gaussian noise). **Simulated telephony on read speech is not identical to production call-center audio**, which features spontaneous speaker disfluencies, overlapping crosstalk, acoustic reverberation, and bursty packet loss. Benchmark metrics must be interpreted strictly within these controlled experimental parameters.
+> **Notice & Scope Clarification:** CallLens evaluates automatic speech recognition (ASR) robustness using **read speech (FLEURS Hindi `hi_in`)** and **synthetic TTS speech (Gnani Timbre v2.5)** under simulated acoustic degradation (telephony bandpass 300–3400 Hz, 8 kHz G.711 &mu;‑law companding, and calibrated Gaussian noise). **Simulated telephony on read speech is not identical to production call-center audio**, which features spontaneous speaker disfluencies, overlapping crosstalk, acoustic reverberation, and bursty packet loss. Benchmark metrics must be interpreted strictly within these controlled experimental parameters.
 
 ---
 
@@ -20,9 +20,9 @@ The platform provides an end-to-end speech engineering suite integrating:
 1. **Speech-to-Text (STT) Studio:** Audio file uploads (&le; 5 MB), live browser microphone recording with real-time Web Audio API waveform visualization, preloaded benchmark clips, 10 Indic languages, format selector (verbatim, ITN transcribe, codemix), and one-click transcript copy/download.
 2. **Text-to-Speech (TTS) Studio:** Natural voice synthesis powered by 7 curated Gnani Timbre Indic voices (highlighting verified flagship Hindi male `Pranav` and female `Kaveri`), dynamic speaking rates (0.85x–1.15x), banking & OTP quick templates, audio player with waveform preview, and WAV downloads.
 3. **Live Speech Playground (WebSocket Gateway):** Application-level WebSocket audio transport with buffered REST transcription over `/ws/speech`, capturing microphone audio chunks in real time, emitting transparent lifecycle events (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`), and executing atomic transcription and voice feedback with complete architectural honesty (zero fabricated streaming illusions).
-4. **CallLens Follow-up Desk (Human-in-the-Loop BFSI Workflow):** Operational debt collection speech workflow with curated synthetic collection scenarios for human-in-the-loop operator review and reminder generation. Ingests representative Hindi debt collection calls, extracts actionable commitments (customer name, overdue amount, original due date, promise-to-pay date, hardship reason), strictly flags missing data for operator review (never hallucinating dates or amounts), and synthesizes respectful personalized Hindi voice reminders via Timbre.
-5. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls.
-6. **Call Data Persistence & Storage Diagnostics:** Persistent SQLite schema (`recording_sessions`, `audio_assets`, `speech_operations`, `transcripts`, `followup_records`) storing audio files outside Git with SHA-256 integrity, session deletion, and real-time storage diagnostics (`GET /api/storage/diagnostics`).
+4. **CallLens Follow-up Desk (Human-in-the-Loop BFSI Workflow):** Operator-assisted debt collection speech workflow with curated synthetic collection scenarios for human-in-the-loop operator review and reminder generation. Ingests representative Hindi debt collection calls, extracts actionable commitments (customer name, overdue amount, original due date, promise-to-pay date, hardship reason), strictly flags missing data for operator review (never hallucinating dates or amounts), and synthesizes respectful personalized Hindi voice reminders via Timbre.
+5. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls (360 genuine live provider benchmark evaluations recorded in SQLite).
+6. **Call Data Persistence, Safety & Zero-Credit Verification:** Persistent SQLite schema (`recording_sessions`, `audio_assets`, `speech_operations`, `transcripts`, `followup_records`) with verified persistence across backend restarts, physical file unlinking on session deletion, and storage diagnostics (`GET /api/storage/diagnostics`). The platform defaults to safe mock and cached replay mode (`ALLOW_LIVE_API=0`), and the automated 137-test suite runs 100% offline consuming zero live provider credits.
 
 ---
 
@@ -31,7 +31,7 @@ The platform provides an end-to-end speech engineering suite integrating:
 The dark-themed Linear/Vercel/Stripe-inspired interface provides 10 dedicated views, numerical keyboard navigation shortcuts (`[1]` to `[0]`), and a built-in Raycast command palette (`⌘K` or `/`).
 
 ### Overview Dashboard (1440 &times; 900)
-Unified speech AI overview with live KPI metric cards, Word Error Rate comparisons, latency trade-offs, and an enterprise deployment recommendation matrix.
+Unified speech AI overview with live KPI metric cards, Word Error Rate comparisons, latency trade-offs, and an empirical deployment recommendation matrix.
 ![CallLens Desktop Dashboard](docs/screenshots/dashboard_1440x900.png)
 
 ### CallLens Follow-up Desk (Human-in-the-Loop Collection Workflow)
@@ -156,19 +156,21 @@ flowchart TD
 
 ### 3.1 Call Data Persistence, Security & Storage Lifecycle
 
-CallLens treats speech recording data as persistent, audit-verifiable enterprise assets stored securely outside Git in `../calllens-data`:
+CallLens treats speech recording data as persistent, audit-verifiable assets stored securely outside Git in `../calllens-data`:
 
-1. **Relational Schemas:**
+1. **Relational Schemas & Backend Restart Persistence:**
    - `recording_sessions`: Lifecycle tracking (`active`, `completed`, `interrupted`, `cancelled`, `failed`, `forbidden`) with metadata and customer associations.
    - `audio_assets`: Physical files linked with SHA-256 integrity hash, exact decoded duration via `soundfile`, channels, sample rate, and UUID filenames.
    - `speech_operations`: Comprehensive operation logs tracking model, language, format, provenance (`live`, `cache`, `mock`), latency, and sanitized error codes.
    - `transcripts`: Persisted transcription text with word/character counts and finality markers.
    - `followup_records`: Confirmed debt-collection commitments (overdue amounts, due dates, promise-to-pay commitments, hardship reasons).
+   - **Tested Restart Survival:** Completed recording sessions, raw audio files, transcripts, and followup commitments survive backend server restarts and process termination with 100% data integrity, backed by SQLite and disk file storage.
+   - **Streaming Buffer Scope Limitation:** In-flight microphone audio actively streaming in transient browser memory or uncommitted WebSocket buffers during an abrupt backend shutdown does not survive a sudden disconnection before session completion.
 2. **Audio Durability & Failure Preservation:**
    - Raw audio chunks buffered over WebSockets or uploaded via REST are written to disk as durable `audio_assets` **before** upstream speech recognition is invoked. If the STT provider times out or fails, the original audio asset is strictly preserved on disk and accessible via URL for operator playback.
-3. **Storage Diagnostics & Session Cleanup:**
+3. **Storage Diagnostics & Complete Cascading Deletion:**
    - `GET /api/storage/diagnostics`: Inspects physical disk usage, total sessions, audio assets, and scans for missing or orphaned files.
-   - `DELETE /api/recordings/{session_id}`: Cascading deletion that unlinks physical audio files from disk and removes relational records.
+   - `DELETE /api/recordings/{session_id}`: Cascading deletion that permanently unlinks physical audio files (both incoming recording assets and generated followup reminder audio) from disk and deletes relational database records across all linked tables.
 4. **Server-Enforced Live Authorization Policy:**
    - Fails closed (`ALLOW_LIVE_API=0` by default). Any incoming request with `live=1` without explicit environment authorization triggers an immediate `HTTP 403 Forbidden` (`LIVE_EXECUTION_FORBIDDEN`), preventing accidental credit consumption.
 
@@ -178,7 +180,8 @@ CallLens treats speech recording data as persistent, audit-verifiable enterprise
 
 > [!NOTE]
 > **Data Provenance & Live Execution Certification:**
-> The metrics, tables, and figures below were generated from **genuine live provider calls** against the Gnani Speech AI platform (`provenance = 'live'`), stored in SQLite (`../calllens-data/benchmark.db`) and verified through SHA-256 caching. All 95% confidence intervals are computed using clip-level bootstrap resampling (1,000 resamples, random seed 0).
+> The metrics, tables, and figures below were generated from **genuine live provider calls** executed during the authorized benchmark phase against the Gnani Speech AI platform (`provenance = 'live'`), stored in SQLite (`../calllens-data/benchmark.db`) and verified through SHA-256 caching. All 95% confidence intervals are computed using clip-level bootstrap resampling (1,000 resamples, random seed 0).
+> In contrast, automated regression tests (137 tests) and local pre-release verification run **100% offline with `ALLOW_LIVE_API=0`**, consuming **zero live provider credits** via deterministic fixtures and cache replay.
 
 ### Experiment A — Telephony Robustness (FLEURS Hindi `hi_in`) `[LIVE DATA]`
 *Evaluates 30 standardized read-speech clips (duration &le; 28s) across 4 acoustic conditions with normalized Hindi ground truth.*
@@ -218,11 +221,11 @@ CallLens treats speech recording data as persistent, audit-verifiable enterprise
 
 ---
 
-## 5. Enterprise Deployment Decision Matrix
+## 5. Deployment Decision Matrix
 
 Based on 360 verified empirical evaluations, CallLens establishes concrete architectural rules for production deployment:
 
-| Enterprise Production Scenario | Recommended Model | Empirical Justification |
+| Deployment Scenario | Recommended Model | Empirical Justification |
 | :--- | :--- | :--- |
 | **Clean Audio / Mobile Apps / Web IVR** | **Prisma v3.0** | Leads by **+1.53% absolute WER** (6.65% vs 8.18%) with lowest Character Error Rate (**2.45% CER**). |
 | **Conversational Hinglish & Banking Debt Collection** | **Prisma v3.0** | Leads by **+8.36% absolute WER** (31.60% vs 39.96%) on conversational code-mixed Indian English vocabulary. |
@@ -283,7 +286,7 @@ calllens/
 │   ├── DATA.md                 # Dataset provenance & schema definitions
 │   ├── FORENSIC_QA_REPORT.md   # Independent forensic audit & test evidence
 │   ├── BROWSER_TEST_REPORT.md  # Multi-viewport browser testing evidence
-│   ├── SECURITY_TEST_REPORT.md # Security audit & pen-test validation
+│   ├── SECURITY_TEST_REPORT.md # Security audit & adversarial vulnerability verification
 │   ├── BENCHMARK_PROVENANCE_AUDIT.md # Provenance separation audit
 │   ├── HANDOVER.md             # Milestone status & transition guide
 │   └── screenshots/            # Genuine QA capture assets
@@ -310,12 +313,19 @@ calllens/
 git clone https://github.com/dragyo7/calllens-stress-lab.git
 cd calllens-stress-lab
 
-# Create and activate virtual environment
+# Create virtual environment
 python -m venv .venv
 
-# Windows PowerShell:
-.venv\Scripts\Activate.ps1
-# Linux / macOS:
+# Activate virtual environment:
+# Option A: Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+# (Note: If script execution is restricted on Windows, run once:
+#  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process)
+
+# Option B: Windows Command Prompt (CMD)
+.venv\Scripts\activate.bat
+
+# Option C: Linux / macOS
 source .venv/bin/activate
 
 # Install pinned dependencies
@@ -342,14 +352,14 @@ ALLOWED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
 ```
 > **Security Notice:** `.env` is strictly ignored by Git (`git check-ignore .env`). Never commit API keys or secret credentials.
 
-### 3. Run the Verification Suite (136 Tests)
-Verify the entire codebase, speech platform endpoints, WebSocket gateways, audio pipeline, and security assertions offline without making any live API calls:
+### 3. Run the Verification Suite (137 Tests)
+Verify the entire codebase, speech platform endpoints, WebSocket gateways, audio pipeline, and security assertions offline without making any live API calls (consumes zero live credits):
 ```bash
 pytest -q
 ```
 Expected output:
 ```text
-136 passed in 8.24s
+137 passed in 10.05s
 ```
 
 ### 4. Launch the Speech Intelligence Platform

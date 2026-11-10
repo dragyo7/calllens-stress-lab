@@ -213,6 +213,61 @@ def test_recording_session_crud_and_delete(client):
     assert client.get(f"/api/recordings/{sess_id}").status_code == 404
 
 
+def test_recording_session_cascading_deletion_with_followup_assets(client):
+    """Verify cascading deletion removes recording assets, followup reminder assets, and DB rows."""
+    sess_id = history.create_recording_session(
+        source="cascade_test",
+        language="hi-IN",
+        customer_name="विकास वर्मा",
+    )
+    wav_bytes = _generate_wav_bytes(duration_sec=0.5)
+    rec_asset = history.save_audio_asset(wav_bytes, asset_type="recording", session_id=sess_id)
+    reminder_asset = history.save_audio_asset(wav_bytes, asset_type="reminder", session_id=sess_id)
+
+    # Add transcript and followup record
+    tr_id = history.record_transcript(
+        session_id=sess_id,
+        text="विकास वर्मा, 45,000 रुपये 15 तारीख तक दे दें।",
+        is_final=True,
+    )
+    history.record_speech_operation(
+        session_id=sess_id,
+        asset_id=rec_asset["asset_id"],
+        operation_type="transcribe",
+        model="prisma-v2.5",
+        status="completed",
+    )
+    history.record_followup_entry(
+        session_id=sess_id,
+        customer_name="विकास वर्मा",
+        amount=45000,
+        due_date="15 तारीख",
+        ptp_date="सोमवार",
+        concern="none",
+        call_summary="Test call summary",
+        reminder_text="नमस्ते विकास जी",
+        voice="Pranav",
+        transcript_id=tr_id,
+        asset_id=reminder_asset["asset_id"],
+    )
+
+    rec_path = Path(rec_asset["storage_path"])
+    rem_path = Path(reminder_asset["storage_path"])
+    assert rec_path.exists()
+    assert rem_path.exists()
+
+    # Cascade delete
+    success = history.delete_recording_session(sess_id)
+    assert success is True
+
+    # Verify both physical files unlinked
+    assert not rec_path.exists()
+    assert not rem_path.exists()
+
+    # Verify API 404
+    assert client.get(f"/api/recordings/{sess_id}").status_code == 404
+
+
 # ===========================================================================
 # 5. STORAGE INTEGRITY DIAGNOSTICS
 # ===========================================================================

@@ -534,7 +534,16 @@ def delete_recording_session(session_id: str, db_url: str | None = None) -> bool
     """Permanently deletes a recording session, its audio assets from disk, and all DB rows."""
     session = _get_db_session(db_url)
     try:
+        # Collect assets directly linked to session
         assets = session.query(AudioAsset).filter_by(session_id=session_id).all()
+        # Also collect any followup-linked reminder assets
+        flws = session.query(FollowupRecord).filter_by(session_id=session_id).all()
+        for flw in flws:
+            if flw.asset_id:
+                fa = session.query(AudioAsset).filter_by(asset_id=flw.asset_id).first()
+                if fa and fa not in assets:
+                    assets.append(fa)
+
         for a in assets:
             try:
                 p = Path(a.storage_path)
@@ -542,7 +551,10 @@ def delete_recording_session(session_id: str, db_url: str | None = None) -> bool
                     p.unlink()
             except Exception as e:
                 logger.warning("Error deleting file %s: %s", a.storage_path, e)
-            a.storage_status = "deleted"
+            try:
+                session.delete(a)
+            except Exception:
+                pass
 
         # Delete database records in safe sequence
         session.query(TranscriptRecord).filter_by(session_id=session_id).delete()

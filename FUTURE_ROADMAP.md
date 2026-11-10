@@ -3,7 +3,7 @@
 
 **Document Purpose:** Senior architectural assessment of future product extensions for CallLens.  
 **Scope:** Architectural evaluation only. None of the speculative enhancements below are implemented in the current frozen release.  
-**Repository Baseline:** Synchronized at `abb0d45922d7d6de1a7b004c3a586750fa9e3b9a` (136 tests passing).
+**Repository Baseline:** Synchronized at `d1948fecf6bb010e86a7b906d77a21bd4d36aca9` (137 tests passing).
 
 ---
 
