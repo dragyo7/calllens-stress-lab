@@ -469,11 +469,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (sttLoader) sttLoader.classList.remove('hidden');
 
       try {
+        const liveVal = document.querySelector('input[name="stt_live"]:checked')?.value;
         let payload = {
           model: model,
           lang: lang,
           format: format,
-          live: 0,
+          live: liveVal !== undefined ? parseInt(liveVal, 10) : 0,
         };
 
         if (currentSttMode === 'upload') {
@@ -784,6 +785,11 @@ document.addEventListener('DOMContentLoaded', () => {
             appendTerminalLog(`Transcription complete in ${(data.latency_sec * 1000).toFixed(0)}ms: "${data.transcript}"`, '#10b981');
             if (liveTranscriptBox) {
               liveTranscriptBox.textContent = data.transcript || '(No speech detected)';
+            }
+            if (liveAudioPlayer && data.audio_url) {
+              liveAudioPlayer.src = data.audio_url;
+              liveAudioPlayer.style.display = 'block';
+              liveAudioPlayer.load();
             }
           } else if (evType === 'tts_generation_started') {
             appendTerminalLog(`Synthesizing feedback speech with voice "${data.voice}"...`, '#a855f7');

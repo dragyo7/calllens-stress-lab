@@ -91,6 +91,16 @@ This register formally records the architectural, technical, and operational dec
 - **Decision:** Enforce perimeter case normalization (`voice.strip().capitalize()`) at both the API Gateway and Client integration layers.
 - **Consequences:** Fault-tolerant voice synthesis regardless of case variations submitted by clients or external integrations.
 
+### ADR D-016: Production Docker Containerization & WSL2 Engine Integration
+- **Context:** Delivering a reliable, reproducible deployment environment that runs seamlessly on developer machines (Windows 11 / WSL2) and cloud servers (Linux) without requiring heavy GUI installers or risking file-locking errors on SQLite over Windows `drvfs` mounts.
+- **Decision:** Build a production Docker image using Debian slim with non-root security (`appuser`, UID 1000), Linux audio runtimes (`libsndfile1`, `ffmpeg`), and Docker Compose mounting `./data:/app/data`. Bridge WSL2 Kali Linux Docker Engine to Windows via `.local/bin` command wrappers, configure `vmIdleTimeout=-1` in `~/.wslconfig`, and maintain a keep-alive background daemon.
+- **Consequences:** Fast container builds, 100% restart persistence of SQLite and audio assets across `docker compose down && docker compose up -d`, non-root security compliance, and zero drvfs SQLite locking errors.
+
+### ADR D-017: Multi-Process Call Accounting with Persistent Dead Man's Switch
+- **Context:** Risk of accidental API credit burn or runaway network requests during automated test runs, multi-process benchmark executions, or container restarts.
+- **Decision:** Centralize call accounting in a persistent JSON file (`call_accounting.json`) protected by cross-process OS file locking (`msvcrt` on Windows, `fcntl` on Linux). Enforce an atomic reserve-and-commit lifecycle with a hard ceiling (`MAX_LIVE_CALLS`).
+- **Consequences:** Guarantees absolute protection against credit overruns across concurrent processes and threads; raises `CallLimitExceededError` fail-closed if the quota is reached.
+
 ---
 
 ## 3. Open Architectural Decisions (Under Consideration)

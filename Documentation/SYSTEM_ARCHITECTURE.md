@@ -287,3 +287,38 @@ External speech synthesis engines are case-sensitive regarding voice talent name
   ```
 - This ensures fault-tolerant execution regardless of caller input formatting.
 
+---
+
+## 7. Containerization, WSL2 Engine Integration & Volume Persistence Architecture
+
+CallLens is containerized for production reliability and portability across Linux cloud hosts and Windows workstations:
+
+```mermaid
+flowchart TD
+    subgraph HostEnv ["Host Environment (Windows / Linux)"]
+        WSL["WSL2 Kali Linux Docker Engine (v28.5.2)"]
+        CmdBridge["C:\\Users\\ABHYUDAYA\\.local\\bin\\docker.cmd"]
+        DataVol["./data (Volume Mount)"]
+    end
+
+    subgraph Container ["Docker Container (calllens-app)"]
+        User["Non-Root User: appuser (UID 1000)"]
+        AudioLibs["Audio Libraries: libsndfile1, ffmpeg"]
+        App["FastAPI Uvicorn (0.0.0.0:8000)"]
+        Storage["/app/data (Mounted Volume)"]
+    end
+
+    CmdBridge --> WSL
+    WSL --> Container
+    DataVol <-->|Persistent Volume Mount| Storage
+    User --> App
+    AudioLibs --> App
+```
+
+### 7.1. Key Container Hardening Standards
+1. **Non-Root Execution:** The Dockerfile creates and switches to a dedicated unprivileged user `appuser` (UID 1000, GID 1000) preventing root compromise.
+2. **Native Audio Processing:** Includes `libsndfile1` and `ffmpeg` in the Debian slim base image, ensuring byte-level WAV encoding, resampling, and streaming without runtime errors.
+3. **Volume Persistence Lifecycle:** Mounts `./data:/app/data` where `benchmark.db` (seeded with all 360 records), `tts_audio/`, and `recordings/` reside. When containers are destroyed (`docker compose down`) and recreated (`docker compose up -d`), all historical and generated data persists undamaged.
+4. **WSL2 Keep-Alive Optimization:** On Windows developer workstations, WSL2 can enter idle sleep after periods of terminal inactivity. Setting `vmIdleTimeout=-1` in `~/.wslconfig` and running a lightweight background process keeps the Docker Engine active without container termination.
+5. **Automated Healthcheck:** Configured in `docker-compose.yml` probing `http://localhost:8000/api/health` every 15s with a 5s timeout, guaranteeing traffic routing only to fully initialized instances.
+
