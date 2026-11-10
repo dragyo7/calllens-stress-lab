@@ -28,39 +28,52 @@ The platform provides an end-to-end speech engineering suite integrating:
 
 ## 2. Interactive Platform Showcase
 
-The dark-themed Linear/Vercel/Stripe-inspired interface provides 10 dedicated views, numerical keyboard navigation shortcuts (`[1]` to `[0]`), and a built-in Raycast command palette (`⌘K` or `/`).
+The dark-themed Linear/Vercel/Stripe-inspired interface is organized for both general audiences and technical evaluators. It provides 10 intuitive views, numerical keyboard navigation shortcuts (`[1]` to `[0]`), and a built-in Raycast command palette (`⌘K` or `/`).
+
+| Key | Simplified Navigation Label | Functional Purpose |
+|:---:|:---|:---|
+| `[1]` | **Overview** | Unified AI dashboard with capability cards, historical KPIs, and deployment guidance |
+| `[2]` | **Speech to Text** | Transcribe audio recordings or preloaded clips with format options |
+| `[3]` | **Convert Text to Speech** | Synthesize natural Indic voice audio with 7 curated Timbre voices |
+| `[4]` | **Record & Transcribe** | Live microphone recording with transparent WebSocket buffering lifecycle |
+| `[5]` | **Payment Follow-up Assistant** | BFSI debt collection commitment extraction & human-in-the-loop reminders |
+| `[6]` | **Compare AI Models** | Side-by-side evaluation between Gnani Prisma v2.5 and v3.0 |
+| `[7]` | **Speech Quality Testing** | Telephony stress testing (ITU-T G.712 bandpass, $\mu$-law, noise degradation) |
+| `[8]` | **My Recordings** | Persistent SQLite audio and transcript audit trail |
+| `[9]` | **System Health** | Storage diagnostics, disk usage audits, and database integrity checks |
+| `[0]` | **How It Works** | Comprehensive architecture, benchmark methodology, and scoring formulas |
 
 ### Overview Dashboard (1440 &times; 900)
-Unified speech AI overview with live KPI metric cards, Word Error Rate comparisons, latency trade-offs, and an empirical deployment recommendation matrix.
+Unified speech AI overview with plain-language explanations, clickable capability cards, historical FLEURS Hindi benchmark results, and an empirical deployment recommendation matrix.
 ![CallLens Desktop Dashboard](docs/screenshots/dashboard_1440x900.png)
 
-### CallLens Follow-up Desk (Human-in-the-Loop Collection Workflow)
+### Payment Follow-up Assistant (Human-in-the-Loop Collection Workflow)
 Interactive 3-step banking operations desk: Ingest call audio &rarr; Audit extracted commitments & review missing data &rarr; Synthesize respectful Hindi reminder calls with Timbre neural TTS.
-![CallLens Follow-up Desk](docs/screenshots/followup_desk.png)
+![Payment Follow-up Assistant](docs/screenshots/followup_desk.png)
 
-### Speech-to-Text (STT) Studio
+### Speech to Text (Audio Upload & Transcription)
 Transcribe custom audio files, live microphone speech, or preloaded clips with Gnani Prisma v2.5 or v3.0, displaying real-time waveforms and processing latencies.
-![Speech-to-Text Studio](docs/screenshots/stt_studio.png)
+![Speech to Text](docs/screenshots/stt_studio.png)
 
-### Text-to-Speech (TTS) Studio
+### Convert Text to Speech (Voice Generator)
 Synthesize natural Indic speech with 7 curated Timbre Indic voices (flagship Pranav and Kaveri), adjustable speaking speed, prebuilt BFSI reminders, interactive audio player, and instant WAV download.
-![Text-to-Speech Studio](docs/screenshots/tts_studio.png)
+![Convert Text to Speech](docs/screenshots/tts_studio.png)
 
-### Live Speech Playground (WebSocket Gateway)
+### Record & Transcribe (Live Microphone Playground)
 Application-level WebSocket audio transport with buffered REST transcription capturing live microphone chunks and emitting structured lifecycle events.
-![Live Playground](docs/screenshots/live_playground.png)
+![Record & Transcribe](docs/screenshots/live_playground.png)
 
-### Telephony Stress Lab & Model Comparison
+### Compare AI Models & Speech Quality Testing
 Empirical side-by-side head-to-head comparison between Prisma v2.5 and v3.0 across clean studio audio, ITU-T G.712 telephony, and 0 dB SNR severe noise regimes.
-![Telephony Stress Lab](docs/screenshots/side_by_side_comparison.png)
+![Speech Quality Testing](docs/screenshots/side_by_side_comparison.png)
 
-### Model Comparison Matrix & Bootstrap Confidence Intervals
+### Statistical Model Comparison & Bootstrap Confidence Intervals
 Fine-grained statistical evaluation with 95% clip-level bootstrap confidence intervals (1,000 resamples) and Character Error Rate (CER) comparisons.
-![Model Comparison View](docs/screenshots/model_comparison_view.png)
+![Compare AI Models](docs/screenshots/model_comparison_view.png)
 
-### Audio Audit History Log
+### My Recordings (Audio Audit History Log)
 Persistent SQLite audit trail of all speech recognition and voice synthesis requests.
-![Audio History Log](docs/screenshots/audio_history.png)
+![My Recordings](docs/screenshots/audio_history.png)
 
 ### Responsive Mobile Interface (390 &times; 844)
 Full platform access on modern mobile and tablet viewports with slide-out navigation.

@@ -46,15 +46,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // View titles map (10 views)
   const viewTitles = {
     overview: 'Overview',
-    'stt-studio': 'Speech-to-Text Studio',
-    'tts-studio': 'Text-to-Speech Studio',
-    'live-playground': 'Live Speech Playground',
-    'followup-desk': 'Follow-up Desk',
-    comparison: 'Model Comparison',
-    'stress-lab': 'Telephony Stress Lab',
-    history: 'Audio Audit History',
-    diagnostics: 'Failures & Diagnostics',
-    methodology: 'Methodology & Provenance',
+    'stt-studio': 'Speech to Text',
+    'tts-studio': 'Convert Text to Speech',
+    'live-playground': 'Record & Transcribe',
+    'followup-desk': 'Payment Follow-up Assistant',
+    comparison: 'Compare AI Models',
+    'stress-lab': 'Speech Quality Testing',
+    history: 'My Recordings',
+    diagnostics: 'System Health',
+    methodology: 'How It Works',
   };
 
   // Toast notification system

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CallLens Stress Lab — Speech Intelligence & Telephony Evaluation Platform</title>
   <meta name="description" content="CallLens Stress Lab: Production Speech-to-Text (STT), Text-to-Speech (TTS), Live WebSocket Playground, and Telephony Stress Benchmarking powered by Gnani Prisma and Timbre.">
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=2.1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -28,43 +28,43 @@
       <div class="cmd-body" id="cmd-results">
         <div class="cmd-group-label">Speech Intelligence Platform</div>
         <div class="cmd-item active" data-action="view" data-target="overview">
-          <span class="cmd-item-title">1. Overview Dashboard</span>
+          <span class="cmd-item-title">1. Overview</span>
           <span class="cmd-item-key">1</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="stt-studio">
-          <span class="cmd-item-title">2. Speech-to-Text Studio (Upload & Mic)</span>
+          <span class="cmd-item-title">2. Speech to Text (Upload Audio)</span>
           <span class="cmd-item-key">2</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="tts-studio">
-          <span class="cmd-item-title">3. Text-to-Speech Studio (Timbre Synthesis)</span>
+          <span class="cmd-item-title">3. Convert Text to Speech (Voice Generator)</span>
           <span class="cmd-item-key">3</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="live-playground">
-          <span class="cmd-item-title">4. Live Playground (WebSocket & Mic)</span>
+          <span class="cmd-item-title">4. Record & Transcribe (Microphone)</span>
           <span class="cmd-item-key">4</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="followup-desk">
-          <span class="cmd-item-title">5. Follow-up Desk (Banking Call Workflow)</span>
+          <span class="cmd-item-title">5. Payment Follow-up Assistant</span>
           <span class="cmd-item-key">5</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="comparison">
-          <span class="cmd-item-title">6. Model Comparison (Prisma v2.5 vs v3.0)</span>
+          <span class="cmd-item-title">6. Compare AI Models (Prisma v2.5 vs v3.0)</span>
           <span class="cmd-item-key">6</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="stress-lab">
-          <span class="cmd-item-title">7. Telephony Stress Lab (Benchmark Replay)</span>
+          <span class="cmd-item-title">7. Speech Quality Testing (Phone & Noise)</span>
           <span class="cmd-item-key">7</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="history">
-          <span class="cmd-item-title">8. Audio History & Audit Log</span>
+          <span class="cmd-item-title">8. My Recordings (Audio & Transcripts)</span>
           <span class="cmd-item-key">8</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="diagnostics">
-          <span class="cmd-item-title">9. Failures & Diagnostics</span>
+          <span class="cmd-item-title">9. System Health (Diagnostics & Storage)</span>
           <span class="cmd-item-key">9</span>
         </div>
         <div class="cmd-item" data-action="view" data-target="methodology">
-          <span class="cmd-item-title">0. Methodology & Provenance</span>
+          <span class="cmd-item-title">0. How It Works (Methodology & Architecture)</span>
           <span class="cmd-item-key">0</span>
         </div>
       </div>
@@ -82,7 +82,7 @@
             </svg>
           </div>
           <div class="brand-meta">
-            <div class="brand-title">CallLens <span class="badge-subtle">PRO</span></div>
+            <div class="brand-title">CallLens</div>
             <div class="brand-desc">Speech Intelligence Platform</div>
           </div>
         </div>
@@ -105,7 +105,7 @@
 
       <!-- Navigation Menu -->
       <nav class="sidebar-nav">
-        <div class="nav-section-label">PLATFORM SUITE</div>
+        <div class="nav-section-label">MAIN TOOLS</div>
         
         <button class="nav-item active" data-view="overview" id="nav-btn-overview">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -120,7 +120,7 @@
 
         <button class="nav-item" data-view="stt-studio" id="nav-btn-stt-studio">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <span class="nav-text">Speech to Text</span>
           <kbd class="nav-kbd">2</kbd>
@@ -130,15 +130,15 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
           </svg>
-          <span class="nav-text">Text to Speech</span>
+          <span class="nav-text">Convert Text to Speech</span>
           <kbd class="nav-kbd">3</kbd>
         </button>
 
         <button class="nav-item" data-view="live-playground" id="nav-btn-live-playground">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
-          <span class="nav-text">Live Playground</span>
+          <span class="nav-text">Record & Transcribe</span>
           <kbd class="nav-kbd">4</kbd>
         </button>
 
@@ -146,17 +146,17 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
-          <span class="nav-text">Follow-up Desk</span>
+          <span class="nav-text">Payment Follow-up Assistant</span>
           <kbd class="nav-kbd">5</kbd>
         </button>
 
-        <div class="nav-section-label">EVALUATION & BENCHMARK</div>
+        <div class="nav-section-label">TESTING & BENCHMARKS</div>
 
         <button class="nav-item" data-view="comparison" id="nav-btn-comparison">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <span class="nav-text">Model Comparison</span>
+          <span class="nav-text">Compare AI Models</span>
           <kbd class="nav-kbd">6</kbd>
         </button>
 
@@ -164,7 +164,7 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
           </svg>
-          <span class="nav-text">Stress Lab</span>
+          <span class="nav-text">Speech Quality Testing</span>
           <kbd class="nav-kbd">7</kbd>
         </button>
 
@@ -172,15 +172,17 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span class="nav-text">Audio History</span>
+          <span class="nav-text">My Recordings</span>
           <kbd class="nav-kbd">8</kbd>
         </button>
+
+        <div class="nav-section-label">SYSTEM & METHODOLOGY</div>
 
         <button class="nav-item" data-view="diagnostics" id="nav-btn-diagnostics">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <span class="nav-text">Failures & Diagnostics</span>
+          <span class="nav-text">System Health</span>
           <kbd class="nav-kbd">9</kbd>
         </button>
 
@@ -188,7 +190,7 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
-          <span class="nav-text">Methodology</span>
+          <span class="nav-text">How It Works</span>
           <kbd class="nav-kbd">0</kbd>
         </button>
       </nav>
@@ -251,8 +253,8 @@
           </button>
 
           <div class="header-pill-group">
-            <span class="status-pill status-live" id="mode-badge" title="Replay of recorded live runs">
-              <span class="status-dot"></span> Replay of recorded live runs
+            <span class="status-pill status-live" id="mode-badge" title="Replay of recorded live runs (0 live API credits consumed)">
+              <span class="status-dot"></span> Safe Demonstration Mode
             </span>
             <span class="status-pill status-neutral">
               Prisma v2.5 & v3.0
@@ -267,122 +269,259 @@
         <section class="overview-hero-card">
           <div class="hero-content">
             <div class="hero-badge-row">
-              <span class="hero-tag">Speech Intelligence & Telephony Platform</span>
-              <span class="hero-provenance-tag">Production Ready</span>
+              <span class="hero-tag">Speech Intelligence Platform</span>
             </div>
-            <h1 class="hero-heading">Enterprise Speech Intelligence & Telephony Platform</h1>
+            <h1 class="hero-heading">Understand and work with speech using AI.</h1>
             <p class="hero-subtext">
-              Unified speech AI workstation integrating high-throughput Speech-to-Text (STT), natural Text-to-Speech (TTS), interactive WebSocket playground, and rigorous telephony channel stress benchmarking comparing <strong>Gnani Prisma v2.5</strong> and <strong>Prisma v3.0</strong>.
+              Upload recordings, convert speech into text, generate spoken audio, and test how accurately AI understands Hindi and Hinglish.
             </p>
             <div class="hero-actions">
-              <button class="btn btn-primary" onclick="window.switchView('stt-studio')">
+              <button class="btn btn-primary" onclick="window.switchView('live-playground')">
                 <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
                   <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
                 </svg>
-                Launch STT Studio
+                Record & Transcribe
+              </button>
+              <button class="btn btn-secondary" onclick="window.switchView('stt-studio')">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                Upload Audio File
               </button>
               <button class="btn btn-secondary" onclick="window.switchView('tts-studio')">
                 <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
                   <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd" />
                 </svg>
-                Launch TTS Studio
-              </button>
-              <button class="btn btn-ghost" onclick="window.switchView('live-playground')">
-                Live Playground
+                Convert Text to Speech
               </button>
             </div>
           </div>
 
           <div class="hero-key-takeaways">
             <div class="takeaway-item">
-              <span class="takeaway-label">Speech-to-Text Engines</span>
+              <span class="takeaway-label">Speech Recognition</span>
               <div class="takeaway-val">Prisma v2.5 & v3.0</div>
-              <span class="takeaway-sub">Verbatim, Transcribe (ITN) & Codemix</span>
+              <span class="takeaway-sub">Standard Hindi & Hinglish</span>
             </div>
             <div class="takeaway-item">
-              <span class="takeaway-label">Text-to-Speech Engine</span>
-              <div class="takeaway-val">Gnani Timbre v2.5</div>
-              <span class="takeaway-sub">7 curated Indic voices (Flagship Pranav & Kaveri)</span>
+              <span class="takeaway-label">Spoken Voice Synthesis</span>
+              <div class="takeaway-val">7 Curated Voices</div>
+              <span class="takeaway-sub">Flagship Pranav & Kaveri</span>
             </div>
             <div class="takeaway-item">
-              <span class="takeaway-label">Telephony Stress Lab</span>
+              <span class="takeaway-label">Quality Evaluations</span>
               <div class="takeaway-val">360 Benchmark Runs</div>
-              <span class="takeaway-sub">ITU-T G.712 bandpass & 0 dB SNR noise</span>
+              <span class="takeaway-sub">Clean audio, phone lines & noise</span>
             </div>
           </div>
         </section>
 
-        <!-- KPI Metric Cards Grid -->
-        <section class="kpi-grid">
-          <div class="kpi-card" onclick="window.switchView('stt-studio')">
-            <div class="kpi-header">
-              <span class="kpi-title">Speech-to-Text Studio</span>
-              <span class="kpi-badge badge-blue">Ready</span>
+        <!-- Main Capabilities Grid (Clickable Cards) -->
+        <section class="capabilities-section">
+          <div class="capabilities-section-header">
+            <h2 class="capabilities-section-title">Explore Main Capabilities</h2>
+            <p class="capabilities-section-sub">Choose any capability below to convert speech to text, generate voice, or test model accuracy:</p>
+          </div>
+          <div class="capability-grid">
+            <!-- Card 1: Speech to Text -->
+            <div class="capability-card" onclick="window.switchView('stt-studio')">
+              <div class="capability-top">
+                <div class="capability-icon-wrap">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <span class="capability-badge">Audio Upload</span>
+              </div>
+              <div class="capability-body">
+                <h3 class="capability-title">Speech to Text</h3>
+                <p class="capability-desc">Upload or record audio and receive an instant written transcript in Hindi and Indic languages.</p>
+              </div>
+              <div class="capability-action">
+                <span>Upload & Transcribe</span>
+                <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
             </div>
-            <div class="kpi-number">STT Studio</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">Upload, mic, 10 Indic languages</span>
-              <span class="kpi-trend positive">&rarr; Open Studio</span>
+
+            <!-- Card 2: Convert Text to Speech -->
+            <div class="capability-card" onclick="window.switchView('tts-studio')">
+              <div class="capability-top">
+                <div class="capability-icon-wrap" style="color: var(--accent-v30); background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.2);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                </div>
+                <span class="capability-badge">Voice Generator</span>
+              </div>
+              <div class="capability-body">
+                <h3 class="capability-title">Text to Speech</h3>
+                <p class="capability-desc">Enter text and generate spoken audio with 7 curated Indic voices (Flagship Pranav & Kaveri).</p>
+              </div>
+              <div class="capability-action" style="color: var(--accent-v30);">
+                <span>Convert to Speech</span>
+                <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Card 3: Record & Transcribe -->
+            <div class="capability-card" onclick="window.switchView('live-playground')">
+              <div class="capability-top">
+                <div class="capability-icon-wrap" style="color: #34d399; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                <span class="capability-badge">Live Recording</span>
+              </div>
+              <div class="capability-body">
+                <h3 class="capability-title">Record & Transcribe</h3>
+                <p class="capability-desc">Record using your microphone and receive a transcript. Audio chunks are buffered for reliable speech processing.</p>
+              </div>
+              <div class="capability-action" style="color: #34d399;">
+                <span>Start Microphone Recording</span>
+                <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Card 4: Speech Quality Testing -->
+            <div class="capability-card" onclick="window.switchView('stress-lab')">
+              <div class="capability-top">
+                <div class="capability-icon-wrap" style="color: #fbbf24; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                  </svg>
+                </div>
+                <span class="capability-badge">Audio Conditions</span>
+              </div>
+              <div class="capability-body">
+                <h3 class="capability-title">Speech Quality Testing</h3>
+                <p class="capability-desc">Test speech recognition under different audio conditions: clean studio, phone calls, and heavy background noise.</p>
+              </div>
+              <div class="capability-action" style="color: #fbbf24;">
+                <span>Test Audio Quality</span>
+                <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Card 5: Compare AI Models -->
+            <div class="capability-card" onclick="window.switchView('comparison')">
+              <div class="capability-top">
+                <div class="capability-icon-wrap" style="color: #a78bfa; background: rgba(167, 139, 250, 0.1); border-color: rgba(167, 139, 250, 0.2);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <span class="capability-badge">Model Comparison</span>
+              </div>
+              <div class="capability-body">
+                <h3 class="capability-title">Compare AI Models</h3>
+                <p class="capability-desc">Compare Prisma v2.5 and v3.0 across accuracy, latency, and noise resilience using 360 recorded benchmark evaluations.</p>
+              </div>
+              <div class="capability-action" style="color: #a78bfa;">
+                <span>View Comparison</span>
+                <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Card 6: Payment Follow-up Assistant -->
+            <div class="capability-card" onclick="window.switchView('followup-desk')">
+              <div class="capability-top">
+                <div class="capability-icon-wrap" style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.2);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </div>
+                <span class="capability-badge">Banking Workflow</span>
+              </div>
+              <div class="capability-body">
+                <h3 class="capability-title">Payment Follow-up Assistant</h3>
+                <p class="capability-desc">Explore synthetic banking conversations and review extracted payment information with human-in-the-loop verification.</p>
+              </div>
+              <div class="capability-action" style="color: #38bdf8;">
+                <span>Open Assistant</span>
+                <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                  <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
             </div>
           </div>
+        </section>
 
-          <div class="kpi-card" onclick="window.switchView('tts-studio')">
-            <div class="kpi-header">
-              <span class="kpi-title">Text-to-Speech Studio</span>
-              <span class="kpi-badge badge-cyan">42 Voices</span>
-            </div>
-            <div class="kpi-number">TTS Studio</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">Timbre synthesis, audio download</span>
-              <span class="kpi-trend positive">&rarr; Open Studio</span>
-            </div>
+        <!-- Key Historical Benchmark Results Section -->
+        <section class="capabilities-section">
+          <div class="capabilities-section-header">
+            <h2 class="capabilities-section-title">Key Historical Results (FLEURS Hindi Benchmark)</h2>
+            <p class="capabilities-section-sub">Results from 360 recorded benchmark evaluations. All evaluations use safe offline replay (0 live credits consumed).</p>
           </div>
+          <div class="kpi-grid">
+            <div class="kpi-card" onclick="window.switchView('comparison')">
+              <div class="kpi-header">
+                <span class="kpi-title">Clean Audio Accuracy (Prisma v3.0)</span>
+                <span class="kpi-badge badge-green">Historical Live</span>
+              </div>
+              <div class="kpi-number" id="kpi-clean-wer">6.65%</div>
+              <div class="kpi-meta">
+                <span class="kpi-detail">Recognition errors on clean audio: 6.65%</span>
+                <span class="kpi-trend positive">+1.53% vs v2.5</span>
+              </div>
+              <div class="kpi-explanation">
+                Word Error Rate (WER) — lower error percentages mean better transcription accuracy. 95% Confidence Interval: [4.81%, 8.67%].
+              </div>
+            </div>
 
-          <div class="kpi-card" onclick="window.switchView('live-playground')">
-            <div class="kpi-header">
-              <span class="kpi-title">Live Playground</span>
-              <span class="kpi-badge badge-indigo">WebSocket</span>
+            <div class="kpi-card" onclick="window.switchView('stress-lab')">
+              <div class="kpi-header">
+                <span class="kpi-title">Heavy Noise Accuracy (Prisma v2.5)</span>
+                <span class="kpi-badge badge-amber">Historical Live</span>
+              </div>
+              <div class="kpi-number" id="kpi-noise-wer">18.92%</div>
+              <div class="kpi-meta">
+                <span class="kpi-detail">Recognition errors in heavy noise: 18.92%</span>
+                <span class="kpi-trend positive">+6.90% vs v3.0</span>
+              </div>
+              <div class="kpi-explanation">
+                Word Error Rate at 0 dB SNR street-level noise. Lower is better. Prisma v2.5 shows superior noise resilience.
+              </div>
             </div>
-            <div class="kpi-number">Real-Time</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">Live mic chunking & status events</span>
-              <span class="kpi-trend positive">&rarr; Launch Live</span>
-            </div>
-          </div>
 
-          <div class="kpi-card" onclick="window.switchView('comparison')">
-            <div class="kpi-header">
-              <span class="kpi-title">Clean Audio WER (v3.0)</span>
-              <span class="kpi-badge badge-green">Baseline</span>
+            <div class="kpi-card" onclick="window.switchView('tts-studio')">
+              <div class="kpi-header">
+                <span class="kpi-title">Available Speech Voices</span>
+                <span class="kpi-badge badge-cyan">Exposed Catalogue</span>
+              </div>
+              <div class="kpi-number">7 Voices</div>
+              <div class="kpi-meta">
+                <span class="kpi-detail">Gnani Timbre Indic Neural Voices</span>
+                <span class="kpi-trend neutral">&rarr; Open TTS</span>
+              </div>
+              <div class="kpi-explanation">
+                7 curated Indic voices including verified flagship Hindi male Pranav and female Kaveri.
+              </div>
             </div>
-            <div class="kpi-number" id="kpi-clean-wer">6.65%</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">95% CI: [4.81%, 8.67%]</span>
-              <span class="kpi-trend positive">+1.53% vs v2.5</span>
-            </div>
-          </div>
 
-          <div class="kpi-card" onclick="window.switchView('stress-lab')">
-            <div class="kpi-header">
-              <span class="kpi-title">Severe Noise WER (v2.5)</span>
-              <span class="kpi-badge badge-amber">0 dB SNR</span>
-            </div>
-            <div class="kpi-number" id="kpi-noise-wer">18.92%</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">v2.5 telephony noise resilience</span>
-              <span class="kpi-trend positive">+6.90% vs v3.0</span>
-            </div>
-          </div>
-
-          <div class="kpi-card" onclick="window.switchView('history')">
-            <div class="kpi-header">
-              <span class="kpi-title">Audio Audit History</span>
-              <span class="kpi-badge badge-subtle">SQLite</span>
-            </div>
-            <div class="kpi-number" id="kpi-history-count">-</div>
-            <div class="kpi-meta">
-              <span class="kpi-detail">Recent STT and TTS logs</span>
-              <span class="kpi-trend neutral">&rarr; View Audit Trail</span>
+            <div class="kpi-card" onclick="window.switchView('history')">
+              <div class="kpi-header">
+                <span class="kpi-title">Saved Recording Sessions</span>
+                <span class="kpi-badge badge-subtle">Disk Storage</span>
+              </div>
+              <div class="kpi-number" id="kpi-history-count">-</div>
+              <div class="kpi-meta">
+                <span class="kpi-detail">Recent recordings & transcripts</span>
+                <span class="kpi-trend neutral">&rarr; My Recordings</span>
+              </div>
+              <div class="kpi-explanation">
+                Stored in SQLite and disk storage outside Git with SHA-256 integrity verification.
+              </div>
             </div>
           </div>
         </section>
@@ -392,8 +531,8 @@
           <div class="chart-panel">
             <div class="chart-panel-header">
               <div>
-                <h3 class="chart-panel-title">Word Error Rate by Acoustic Condition</h3>
-                <p class="chart-panel-subtitle">Evaluated on 30 standardized FLEURS Hindi read speech clips per condition (N=240)</p>
+                <h3 class="chart-panel-title">Word Error Rate by Acoustic Condition (Lower is Better)</h3>
+                <p class="chart-panel-subtitle">Evaluated on 30 standardized FLEURS Hindi read speech clips per condition (N=240). Lower bars mean fewer mistakes.</p>
               </div>
               <div class="chart-legend-custom">
                 <span class="legend-chip chip-v25"><span class="chip-color"></span> Prisma v2.5</span>
@@ -408,8 +547,8 @@
           <div class="chart-panel">
             <div class="chart-panel-header">
               <div>
-                <h3 class="chart-panel-title">Accuracy vs. Real-Time Latency Trade-Off</h3>
-                <p class="chart-panel-subtitle">P50 latency vs Mean WER across acoustic degradation regimes</p>
+                <h3 class="chart-panel-title">Speed vs. Accuracy Trade-Off</h3>
+                <p class="chart-panel-subtitle">P50 response latency (seconds) compared with Mean WER. Bottom-left represents faster speed and higher accuracy.</p>
               </div>
             </div>
             <div class="chart-wrapper">
@@ -418,34 +557,35 @@
           </div>
         </section>
 
-        <!-- Production Recommendation Matrix -->
+        <!-- Model Recommendation Guide -->
         <section class="decision-matrix-card">
           <div class="section-title-row">
-            <h3>Enterprise Production Recommendation Matrix</h3>
-            <span class="badge-subtle">Model Architecture Selection</span>
+            <h3 class="chart-panel-title">Model Recommendation Guide</h3>
+            <span class="badge-subtle">Deployment Selection</span>
           </div>
+          <p class="panel-subtext" style="margin-bottom: 16px;">Based on 360 recorded benchmark evaluations, choose the model that fits your application's acoustic environment:</p>
           <div class="recommendation-grid">
             <div class="recommendation-box v30-box">
               <div class="rec-header">
-                <span class="rec-badge badge-blue">RECOMMENDED FOR IVR & STUDIO</span>
-                <h4>Deploy Prisma v3.0 when:</h4>
+                <span class="rec-badge badge-blue">RECOMMENDED FOR CLEAN AUDIO & WEB APPS</span>
+                <h4>Choose Prisma v3.0 when:</h4>
               </div>
               <ul class="rec-list">
-                <li>High audio fidelity is present (Clean web/app audio, standard telephony).</li>
-                <li>Conversational Hinglish & code-mixed Hindi-English dialogues are dominant (achieved 31.60% WER vs 39.96% for v2.5).</li>
-                <li>Highest syntactic transcription accuracy and lowest Character Error Rate (CER 2.45%) are mission-critical.</li>
+                <li>High audio fidelity is present (web browser recordings, app audio, standard phone calls).</li>
+                <li>Conversational Hinglish & code-mixed Hindi-English words are common (achieved 31.60% errors vs 39.96% for v2.5).</li>
+                <li>Highest syntactic transcription accuracy and lowest character error rate (2.45% CER) are needed.</li>
               </ul>
             </div>
 
             <div class="recommendation-box v25-box">
               <div class="rec-header">
-                <span class="rec-badge badge-amber">RECOMMENDED FOR HIGH-NOISE TELEPHONY</span>
-                <h4>Deploy Prisma v2.5 when:</h4>
+                <span class="rec-badge badge-amber">RECOMMENDED FOR NOISY PHONE CALLS</span>
+                <h4>Choose Prisma v2.5 when:</h4>
               </div>
               <ul class="rec-list">
-                <li>Audio arrives from noisy mobile street channels, factory floors, or moving vehicles (0 dB to 10 dB SNR).</li>
-                <li>Low word omission and resistance to background chatter degradation are required (18.92% vs 25.82% WER at 0 dB SNR).</li>
-                <li>Sub-200ms P50 response latency is strictly constrained on low-bandwidth edges.</li>
+                <li>Calls arrive from noisy mobile channels, traffic, street sounds, or outdoor environments (0 dB to 10 dB noise).</li>
+                <li>Fewer dropped or missing words during loud background disruptions (18.92% vs 25.82% errors in heavy noise).</li>
+                <li>Fast response speed (under 200 milliseconds average latency) is required on low-bandwidth connections.</li>
               </ul>
             </div>
           </div>
@@ -456,8 +596,8 @@
       <main class="view-panel hidden" id="view-stt-studio">
         <div class="panel-header-block">
           <div>
-            <h2>Speech-to-Text Studio</h2>
-            <p class="panel-subtext">Transcribe audio files, live microphone speech, or preloaded benchmark clips using Gnani Prisma v2.5 or v3.0.</p>
+            <h2>Speech to Text</h2>
+            <p class="panel-subtext">Upload an audio file or select a sample clip to generate an accurate written transcript in Hindi and Indic languages.</p>
           </div>
         </div>
 
@@ -625,8 +765,8 @@
       <main class="view-panel hidden" id="view-tts-studio">
         <div class="panel-header-block">
           <div>
-            <h2>Text-to-Speech Studio</h2>
-            <p class="panel-subtext">Synthesize natural Hindi and Hinglish speech using the 7 curated Gnani Timbre Indic voices (Flagship Pranav & Kaveri).</p>
+            <h2>Convert Text to Speech</h2>
+            <p class="panel-subtext">Enter text to generate natural spoken audio with 7 curated Indic voices (Flagship Pranav & Kaveri).</p>
           </div>
         </div>
 
@@ -740,12 +880,12 @@
       <main class="view-panel hidden" id="view-live-playground">
         <div class="panel-header-block">
           <div>
-            <h2>Live Speech Playground</h2>
-            <p class="panel-subtext">Interactive session gateway demonstrating bidirectional speech capture, chunked streaming, and lifecycle events.</p>
+            <h2>Record & Transcribe</h2>
+            <p class="panel-subtext">Record live using your microphone. Audio is captured in chunks over a secure WebSocket connection and buffered for reliable speech recognition.</p>
           </div>
           <div class="header-pill-group">
             <span class="status-pill status-live" id="ws-status-badge">
-              <span class="status-dot"></span> WebSocket Connected
+              <span class="status-dot"></span> Live Recording Gateway Ready
             </span>
           </div>
         </div>
@@ -756,7 +896,7 @@
             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
           </svg>
           <div>
-            <strong>Architecture & Truthfulness Transparency:</strong> The official Gnani Prisma STT provider API operates via atomic HTTP REST (sub-200ms batch). The CallLens Live Playground provides a genuine application-level WebSocket gateway that streams real-time microphone audio chunks, emits structured lifecycle events, and performs atomic transcription and voice synthesis with zero fabricated streaming illusions.
+            <strong>How this works:</strong> Your microphone audio is streamed in chunks over a secure WebSocket connection. The server buffers the recording and transcribes it once you finish speaking. There are no fake streaming illusions.
           </div>
         </div>
 
@@ -765,7 +905,7 @@
             <div class="mic-controls-row">
               <button type="button" class="btn btn-record" id="live-btn-record">
                 <span class="mic-record-dot"></span>
-                <span id="live-record-status">Record Audio Stream</span>
+                <span id="live-record-status">Start Live Recording</span>
               </button>
               <div class="mic-timer font-mono" id="live-mic-timer">00:00</div>
               <div class="live-buffer-stats font-mono text-muted">
@@ -782,18 +922,18 @@
         <div class="dashboard-charts-grid">
           <div class="chart-panel">
             <div class="chart-panel-header">
-              <h3 class="chart-panel-title">WebSocket Lifecycle Event Stream</h3>
+              <h3 class="chart-panel-title">Recording Session Activity</h3>
               <button class="btn btn-ghost" id="live-btn-clear-events">Clear Log</button>
             </div>
             <div class="terminal-box" id="live-events-terminal">
-              <div class="terminal-line"><span class="term-time">[System]</span> Initializing speech WebSocket session...</div>
+              <div class="terminal-line"><span class="term-time">[System]</span> Initializing speech recording session...</div>
             </div>
           </div>
 
           <div class="chart-panel">
             <div class="chart-panel-header">
-              <h3 class="chart-panel-title">Live Transcript & Audio Feedback</h3>
-              <span class="badge-subtle">Atomic Output</span>
+              <h3 class="chart-panel-title">Recorded Transcript & Audio Output</h3>
+              <span class="badge-subtle">Output</span>
             </div>
             <div class="live-transcript-container">
               <p id="live-transcript-box" class="transcript-box" style="height: 180px; overflow-y: auto;">Speak into microphone and stop recording to transcribe...</p>
@@ -809,15 +949,15 @@
       <main class="view-panel hidden" id="view-followup-desk">
         <div class="panel-header-block">
           <div>
-            <h2>CallLens Follow-up Desk</h2>
-            <p class="panel-subtext">Curated synthetic debt-collection scenarios for human-in-the-loop operator review and reminder generation. Transcribe calls, extract actionable commitments, flag missing data, and synthesize respectful Hindi voice reminders.</p>
+            <h2>Payment Follow-up Assistant</h2>
+            <p class="panel-subtext">An operator-assisted workflow for banking calls. Transcribe conversations, review extracted payment commitments with human verification, and generate courteous Hindi voice reminders.</p>
           </div>
           <div class="header-pill-group">
             <span class="status-pill status-live">
-              <span class="status-dot"></span> BFSI Operations Active
+              <span class="status-dot"></span> Assistant Active
             </span>
             <span class="status-pill status-neutral">
-              Prisma v3.0 & Timbre v2.5
+              Prisma v3.0 & Timbre
             </span>
           </div>
         </div>
@@ -1133,15 +1273,30 @@
       <main class="view-panel hidden" id="view-comparison">
         <div class="panel-header-block">
           <div>
-            <h2>Model Comparison: Prisma v2.5 vs Prisma v3.0</h2>
-            <p class="panel-subtext">Direct empirical head-to-head evaluation across 8 operational and accuracy dimensions.</p>
+            <h2>Compare AI Models: Prisma v2.5 vs Prisma v3.0</h2>
+            <p class="panel-subtext">Compare transcription accuracy, response speed, and error rates across 360 recorded benchmark evaluations.</p>
+          </div>
+        </div>
+
+        <div class="metric-help-card">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20" style="color: var(--accent-primary); flex-shrink: 0; margin-top: 2px;">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+          <div>
+            <strong>How to read these benchmark metrics:</strong>
+            <ul style="margin: 6px 0 0 16px; padding: 0;">
+              <li><strong>Word Error Rate (WER):</strong> The percentage of words transcribed incorrectly. <em>Lower is better.</em></li>
+              <li><strong>Character Error Rate (CER):</strong> Spelling accuracy measured letter-by-letter. <em>Lower is better.</em></li>
+              <li><strong>P50 / P95 Latency:</strong> Median and 95th percentile response times in seconds.</li>
+              <li><strong>95% Bootstrap CI:</strong> Reliable statistical bounds computed from 1,000 resamples.</li>
+            </ul>
           </div>
         </div>
 
         <section class="card comparison-table-card">
           <div class="card-header">
             <h3>Full Head-to-Head Benchmark Matrix (FLEURS Hindi hi-IN)</h3>
-            <span class="badge-subtle">95% Clip-Level Bootstrap CI (1,000 resamples)</span>
+            <span class="badge-subtle">Historical Benchmark (1,000 Bootstrap Resamples)</span>
           </div>
           <div class="table-responsive">
             <table class="data-table" id="comparison-data-table">
@@ -1187,12 +1342,12 @@
         </section>
       </main>
 
-      <!-- VIEW 6: TELEPHONY STRESS LAB (PRESERVED BENCHMARK REPLAY) -->
+      <!-- VIEW 7: SPEECH QUALITY TESTING -->
       <main class="view-panel hidden" id="view-stress-lab">
         <div class="panel-header-block">
           <div>
-            <h2>Telephony Stress Lab (Benchmark Replay)</h2>
-            <p class="panel-subtext">Simulate ITU-T G.712 telephone degradation (300–3400 Hz, 8kHz &mu;-law, 0 dB SNR) and replay stored live runs.</p>
+            <h2>Speech Quality Testing</h2>
+            <p class="panel-subtext">Test how speech recognition performs under difficult real-world phone audio conditions (clean, phone call, and noise).</p>
           </div>
         </div>
 
@@ -1352,15 +1507,15 @@
         </section>
       </main>
 
-      <!-- VIEW 7: AUDIO HISTORY -->
+      <!-- VIEW 8: MY RECORDINGS -->
       <main class="view-panel hidden" id="view-history">
         <div class="panel-header-block">
           <div>
-            <h2>Audio History & Audit Log</h2>
-            <p class="panel-subtext">Persistent record of Speech-to-Text transcriptions and Text-to-Speech synthesis operations.</p>
+            <h2>My Recordings & History</h2>
+            <p class="panel-subtext">Review all saved voice recordings, audio transcripts, and synthesized speech files stored safely on disk.</p>
           </div>
           <div class="header-pill-group">
-            <button class="btn btn-secondary" id="history-btn-refresh">Refresh History</button>
+            <button class="btn btn-secondary" id="history-btn-refresh">Refresh List</button>
             <button class="btn btn-ghost" id="history-btn-clear">Clear History</button>
           </div>
         </div>
@@ -1389,12 +1544,12 @@
         </section>
       </main>
 
-      <!-- VIEW 8: FAILURES & DIAGNOSTICS -->
+      <!-- VIEW 9: SYSTEM HEALTH -->
       <main class="view-panel hidden" id="view-diagnostics">
         <div class="panel-header-block">
           <div>
-            <h2>Failures, Error Telemetry & Network Accounting</h2>
-            <p class="panel-subtext">Transparent accounting of all API network attempts, intermittent provider timeouts, retries, and safety safeguards.</p>
+            <h2>System Health & Diagnostics</h2>
+            <p class="panel-subtext">Monitor network safety limits, automatic error recovery logs, and persistent audio storage integrity.</p>
           </div>
         </div>
 
@@ -1501,12 +1656,12 @@
         </section>
       </main>
 
-      <!-- VIEW 9: METHODOLOGY -->
+      <!-- VIEW 10: HOW IT WORKS -->
       <main class="view-panel hidden" id="view-methodology">
         <div class="panel-header-block">
           <div>
-            <h2>Scientific Methodology & Provenance Architecture</h2>
-            <p class="panel-subtext">Comprehensive technical documentation on experimental design, dataset sources, text normalization, and statistical rigor.</p>
+            <h2>How It Works: Methodology & Architecture</h2>
+            <p class="panel-subtext">Learn how CallLens evaluates speech recognition models, sources datasets, and measures accuracy with statistical rigor.</p>
           </div>
         </div>
 
