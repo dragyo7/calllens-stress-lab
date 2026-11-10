@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="pipe-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f1d" />
+      <stop offset="100%" stop-color="#070a14" />
+    </linearGradient>
+
+    <pattern id="dot-grid" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="rgba(255, 255, 255, 0.05)" />
+    </pattern>
+
+    <linearGradient id="wire-glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="35%" stop-color="#06b6d4" />
+      <stop offset="70%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+
+    <!-- Signal pulse animation -->
+    <filter id="p-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <style>
+    .mono { font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+    /* Animated pulse moving along the pipeline */
+    @keyframes signalRun {
+      0% { transform: translateX(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateX(670px); opacity: 0; }
+    }
+    .signal-packet {
+      animation: signalRun 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes waveJitter {
+      0%, 100% { d: path('M0,20 Q10,5 20,20 T40,20 T60,20 T80,20'); }
+      50% { d: path('M0,20 Q10,32 20,20 T40,20 T60,8 T80,20'); }
+    }
+    .noisy-wave {
+      animation: waveJitter 0.4s ease-in-out infinite;
+    }
+  </style>
+
+  <!-- Container -->
+  <rect x="2" y="2" width="876" height="196" rx="12" fill="url(#pipe-bg)" stroke="#1e293b" stroke-width="1.5" />
+  <rect x="2" y="2" width="876" height="196" rx="12" fill="url(#dot-grid)" />
+
+  <!-- Title Pill -->
+  <g transform="translate(28, 18)">
+    <text class="mono" x="0" y="14" fill="#64748b" font-size="10.5" font-weight="700" letter-spacing="1.5">TELEPHONY DEGRADATION CHAIN (ITU-T G.712 / G.711)</text>
+    <text class="mono" x="660" y="14" fill="#38bdf8" font-size="10" font-weight="600">STANDARDIZED SIGNAL LAB</text>
+  </g>
+
+  <!-- Connection Backbone Line -->
+  <line x1="80" y1="105" x2="800" y2="105" stroke="#1e293b" stroke-width="3" stroke-dasharray="4 4" />
+  <line x1="80" y1="105" x2="800" y2="105" stroke="url(#wire-glow)" stroke-width="2" opacity="0.6" />
+
+  <!-- Animated Signal Packet -->
+  <circle class="signal-packet" cx="95" cy="105" r="4" fill="#06b6d4" filter="url(#p-glow)" />
+
+  <!-- STAGE 1: Clean Input -->
+  <g transform="translate(30, 52)">
+    <rect x="0" y="0" width="140" height="106" rx="8" fill="#0f172a" stroke="#10b981" stroke-width="1.2" />
+    <rect x="0" y="0" width="140" height="22" rx="8" fill="rgba(16, 185, 129, 0.12)" />
+    <text class="mono" x="12" y="15" fill="#34d399" font-size="9.5" font-weight="700">1. CLEAN AUDIO</text>
+    
+    <!-- Clean Sine Waveform -->
+    <path d="M 15 65 Q 30 40, 45 65 T 75 65 T 105 65 T 125 65" fill="none" stroke="#10b981" stroke-width="2" />
+    <text class="mono" x="12" y="94" fill="#94a3b8" font-size="9">16 kHz / 16-bit PCM</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <text class="mono" x="178" y="109" fill="#64748b" font-size="14">&rarr;</text>
+
+  <!-- STAGE 2: Bandpass Filter -->
+  <g transform="translate(195, 52)">
+    <rect x="0" y="0" width="150" height="106" rx="8" fill="#0f172a" stroke="#06b6d4" stroke-width="1.2" />
+    <rect x="0" y="0" width="150" height="22" rx="8" fill="rgba(6, 182, 212, 0.12)" />
+    <text class="mono" x="12" y="15" fill="#38bdf8" font-size="9.5" font-weight="700">2. G.712 BANDPASS</text>
+    
+    <!-- Bandpass Cutoff Curve -->
+    <path d="M 15 80 L 35 80 L 50 48 L 100 48 L 115 80 L 135 80" fill="none" stroke="#06b6d4" stroke-width="2" />
+    <text class="mono" x="12" y="94" fill="#94a3b8" font-size="9">300 – 3400 Hz (8th O)</text>
+  </g>
+
+  <!-- Arrow 2 -->
+  <text class="mono" x="353" y="109" fill="#64748b" font-size="14">&rarr;</text>
+
+  <!-- STAGE 3: mu-Law Compand -->
+  <g transform="translate(370, 52)">
+    <rect x="0" y="0" width="150" height="106" rx="8" fill="#0f172a" stroke="#8b5cf6" stroke-width="1.2" />
+    <rect x="0" y="0" width="150" height="22" rx="8" fill="rgba(139, 92, 246, 0.12)" />
+    <text class="mono" x="12" y="15" fill="#c084fc" font-size="9.5" font-weight="700">3. &mu;-LAW COMPAND</text>
+    
+    <!-- Quantized Steps -->
+    <path d="M 15 75 L 35 75 L 35 55 L 65 55 L 65 45 L 95 45 L 95 65 L 125 65 L 135 75" fill="none" stroke="#8b5cf6" stroke-width="2" />
+    <text class="mono" x="12" y="94" fill="#94a3b8" font-size="9">8 kHz / 8-bit (G.711)</text>
+  </g>
+
+  <!-- Arrow 3 -->
+  <text class="mono" x="528" y="109" fill="#64748b" font-size="14">&rarr;</text>
+
+  <!-- STAGE 4: Noise Injection -->
+  <g transform="translate(545, 52)">
+    <rect x="0" y="0" width="150" height="106" rx="8" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2" />
+    <rect x="0" y="0" width="150" height="22" rx="8" fill="rgba(245, 158, 11, 0.12)" />
+    <text class="mono" x="12" y="15" fill="#fbbf24" font-size="9.5" font-weight="700">4. GAUSSIAN NOISE</text>
+    
+    <!-- Noisy waveform -->
+    <path d="M 15 65 L 25 50 L 35 72 L 45 42 L 55 68 L 65 38 L 75 75 L 85 45 L 95 70 L 105 48 L 115 66 L 135 60" fill="none" stroke="#f59e0b" stroke-width="1.8" />
+    <text class="mono" x="12" y="94" fill="#94a3b8" font-size="9">Calibrated 10dB &amp; 0dB</text>
+  </g>
+
+  <!-- Arrow 4 -->
+  <text class="mono" x="703" y="109" fill="#64748b" font-size="14">&rarr;</text>
+
+  <!-- STAGE 5: Evaluation Target -->
+  <g transform="translate(720, 52)">
+    <rect x="0" y="0" width="130" height="106" rx="8" fill="#0f172a" stroke="#ec4899" stroke-width="1.2" />
+    <rect x="0" y="0" width="130" height="22" rx="8" fill="rgba(236, 72, 153, 0.12)" />
+    <text class="mono" x="12" y="15" fill="#f472b6" font-size="9.5" font-weight="700">5. ASR RECOVERY</text>
+    
+    <text class="mono" x="12" y="52" fill="#e2e8f0" font-size="10.5" font-weight="700">PRISMA v2.5</text>
+    <text class="mono" x="12" y="68" fill="#94a3b8" font-size="10">vs PRISMA v3.0</text>
+    <text class="mono" x="12" y="94" fill="#34d399" font-size="9">WER &amp; CER Scoring</text>
+  </g>
+</svg>

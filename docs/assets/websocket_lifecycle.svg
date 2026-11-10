@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 220" width="100%" height="100%">
+  <defs>
+    <linearGradient id="ws-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f1d" />
+      <stop offset="100%" stop-color="#070a14" />
+    </linearGradient>
+
+    <pattern id="dot-grid-3" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="rgba(255, 255, 255, 0.05)" />
+    </pattern>
+
+    <filter id="ws-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <style>
+    .mono { font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+    @keyframes chunkFlow {
+      0% { transform: translateY(0); opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { transform: translateY(60px); opacity: 0; }
+    }
+    .chunk-dot {
+      animation: chunkFlow 2s linear infinite;
+    }
+  </style>
+
+  <!-- Container Box -->
+  <rect x="2" y="2" width="876" height="216" rx="12" fill="url(#ws-bg)" stroke="#1e293b" stroke-width="1.5" />
+  <rect x="2" y="2" width="876" height="216" rx="12" fill="url(#dot-grid-3)" />
+
+  <!-- Title Pill -->
+  <g transform="translate(28, 16)">
+    <text class="mono" x="0" y="14" fill="#64748b" font-size="10.5" font-weight="700" letter-spacing="1.5">WEBSOCKET AUDIO TRANSPORT &amp; BUFFERED REST EXECUTION (/ws/speech)</text>
+    <text class="mono" x="660" y="14" fill="#38bdf8" font-size="10" font-weight="600">ZERO FAKE STREAMING</text>
+  </g>
+
+  <!-- Vertical Life lines -->
+  <!-- Client Column -->
+  <g transform="translate(100, 44)">
+    <rect x="-70" y="0" width="140" height="28" rx="6" fill="#0f172a" stroke="#06b6d4" stroke-width="1.2" />
+    <text class="mono" x="0" y="18" fill="#38bdf8" font-size="10.5" font-weight="700" text-anchor="middle">BROWSER CLIENT</text>
+    <line x1="0" y1="28" x2="0" y2="156" stroke="#334155" stroke-width="1.5" stroke-dasharray="3 3" />
+  </g>
+
+  <!-- Gateway Column -->
+  <g transform="translate(440, 44)">
+    <rect x="-80" y="0" width="160" height="28" rx="6" fill="#0f172a" stroke="#8b5cf6" stroke-width="1.2" />
+    <text class="mono" x="0" y="18" fill="#c084fc" font-size="10.5" font-weight="700" text-anchor="middle">FASTAPI /ws/speech</text>
+    <line x1="0" y1="28" x2="0" y2="156" stroke="#334155" stroke-width="1.5" stroke-dasharray="3 3" />
+  </g>
+
+  <!-- Provider Column -->
+  <g transform="translate(780, 44)">
+    <rect x="-75" y="0" width="150" height="28" rx="6" fill="#0f172a" stroke="#10b981" stroke-width="1.2" />
+    <text class="mono" x="0" y="18" fill="#34d399" font-size="10.5" font-weight="700" text-anchor="middle">GNANI SPEECH AI</text>
+    <line x1="0" y1="28" x2="0" y2="156" stroke="#334155" stroke-width="1.5" stroke-dasharray="3 3" />
+  </g>
+
+  <!-- Event 1: Connect & Session Started -->
+  <g transform="translate(0, 88)">
+    <line x1="100" y1="0" x2="440" y2="0" stroke="#06b6d4" stroke-width="1.5" />
+    <polygon points="440,0 432,-4 432,4" fill="#06b6d4" />
+    <text class="mono" x="270" y="-5" fill="#38bdf8" font-size="9" text-anchor="middle">ws.connect(model, language)</text>
+
+    <line x1="440" y1="14" x2="100" y2="14" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="2 2" />
+    <polygon points="100,14 108,10 108,18" fill="#8b5cf6" />
+    <text class="mono" x="270" y="25" fill="#c084fc" font-size="9" text-anchor="middle">"session_started" {session_id}</text>
+  </g>
+
+  <!-- Event 2: Chunk Transport -->
+  <g transform="translate(0, 130)">
+    <line x1="100" y1="0" x2="440" y2="0" stroke="#06b6d4" stroke-width="1.5" />
+    <polygon points="440,0 432,-4 432,4" fill="#06b6d4" />
+    <text class="mono" x="270" y="-5" fill="#38bdf8" font-size="9" text-anchor="middle">250ms binary audio slices (PCM16)</text>
+
+    <line x1="440" y1="14" x2="100" y2="14" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="2 2" />
+    <polygon points="100,14 108,10 108,18" fill="#8b5cf6" />
+    <text class="mono" x="270" y="25" fill="#c084fc" font-size="9" text-anchor="middle">"audio_chunk_received" {bytes_received}</text>
+  </g>
+
+  <!-- Event 3: Stop & Buffered REST Inference -->
+  <g transform="translate(0, 172)">
+    <line x1="100" y1="0" x2="440" y2="0" stroke="#f59e0b" stroke-width="1.5" />
+    <polygon points="440,0 432,-4 432,4" fill="#f59e0b" />
+    <text class="mono" x="270" y="-5" fill="#fbbf24" font-size="9" text-anchor="middle">{"type": "stop"}</text>
+
+    <!-- Gateway to Provider REST Call -->
+    <line x1="440" y1="0" x2="780" y2="0" stroke="#10b981" stroke-width="1.5" />
+    <polygon points="780,0 772,-4 772,4" fill="#10b981" />
+    <text class="mono" x="610" y="-5" fill="#34d399" font-size="9" text-anchor="middle">POST /asr/v2 (Assembled Audio WAV)</text>
+
+    <!-- Provider Response back to Client -->
+    <line x1="780" y1="18" x2="440" y2="18" stroke="#10b981" stroke-width="1.5" />
+    <polygon points="440,18 448,14 448,22" fill="#10b981" />
+
+    <line x1="440" y1="18" x2="100" y2="18" stroke="#34d399" stroke-width="1.5" />
+    <polygon points="100,18 108,14 108,22" fill="#34d399" />
+    <text class="mono" x="270" y="30" fill="#34d399" font-size="9" font-weight="700" text-anchor="middle">"transcription_completed" + "tts_audio_ready"</text>
+  </g>
+</svg>

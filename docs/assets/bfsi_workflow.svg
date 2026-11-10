@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bfsi-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f1d" />
+      <stop offset="100%" stop-color="#090d16" />
+    </linearGradient>
+
+    <pattern id="dot-grid-2" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="rgba(255, 255, 255, 0.05)" />
+    </pattern>
+
+    <linearGradient id="bfsi-wire" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    .mono { font-family: 'JetBrains Mono', 'Courier New', Courier, monospace; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+    @keyframes flowDot {
+      0% { transform: translateX(0); opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { transform: translateX(540px); opacity: 0; }
+    }
+    .flow-packet {
+      animation: flowDot 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+  </style>
+
+  <!-- Container Box -->
+  <rect x="2" y="2" width="876" height="196" rx="12" fill="url(#bfsi-bg)" stroke="#1e293b" stroke-width="1.5" />
+  <rect x="2" y="2" width="876" height="196" rx="12" fill="url(#dot-grid-2)" />
+
+  <!-- Title Pill -->
+  <g transform="translate(28, 18)">
+    <text class="mono" x="0" y="14" fill="#64748b" font-size="10.5" font-weight="700" letter-spacing="1.5">BFSI HUMAN-IN-THE-LOOP DEBT COLLECTION WORKFLOW</text>
+    <text class="mono" x="650" y="14" fill="#fbbf24" font-size="10" font-weight="600">ZERO HALLUCINATION AUDIT</text>
+  </g>
+
+  <!-- Connection Backbone Line -->
+  <line x1="140" y1="105" x2="740" y2="105" stroke="url(#bfsi-wire)" stroke-width="2" stroke-dasharray="4 4" opacity="0.7" />
+  <circle class="flow-packet" cx="150" cy="105" r="4.5" fill="#f59e0b" />
+
+  <!-- STEP 1: Audio Ingestion -->
+  <g transform="translate(30, 50)">
+    <rect x="0" y="0" width="240" height="110" rx="8" fill="#0f172a" stroke="#06b6d4" stroke-width="1.2" />
+    <rect x="0" y="0" width="240" height="24" rx="8" fill="rgba(6, 182, 212, 0.12)" />
+    <text class="mono" x="12" y="16" fill="#38bdf8" font-size="10" font-weight="700">STEP 1: CALL AUDIO INGEST</text>
+    
+    <text class="sans" x="12" y="44" fill="#e2e8f0" font-size="11" font-weight="600">Representative Hindi Call</text>
+    <text class="mono" x="12" y="62" fill="#94a3b8" font-size="9.5">Customer: Ramesh Kumar</text>
+    <text class="mono" x="12" y="78" fill="#94a3b8" font-size="9.5">Spoken: "₹45,000 पंद्रह तारीख तक"</text>
+    <text class="mono" x="12" y="96" fill="#34d399" font-size="9">&check; Stored with SHA-256 UUID</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <text class="mono" x="286" y="110" fill="#64748b" font-size="16">&rarr;</text>
+
+  <!-- STEP 2: Extraction & Operator Audit -->
+  <g transform="translate(320, 50)">
+    <rect x="0" y="0" width="240" height="110" rx="8" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2" />
+    <rect x="0" y="0" width="240" height="24" rx="8" fill="rgba(245, 158, 11, 0.12)" />
+    <text class="mono" x="12" y="16" fill="#fbbf24" font-size="10" font-weight="700">STEP 2: EXTRACT &amp; OPERATOR AUDIT</text>
+    
+    <text class="mono" x="12" y="44" fill="#38bdf8" font-size="9.5">&bull; Overdue Amount: ₹45,000 [OK]</text>
+    <text class="mono" x="12" y="60" fill="#38bdf8" font-size="9.5">&bull; Promised Date: 15 तारीख [OK]</text>
+    <text class="mono" x="12" y="76" fill="#fbbf24" font-size="9.5">&bull; Hardship: Medical [REVIEW]</text>
+    <text class="mono" x="12" y="96" fill="#f59e0b" font-size="9">&excl; Human-in-Loop Verification Required</text>
+  </g>
+
+  <!-- Arrow 2 -->
+  <text class="mono" x="576" y="110" fill="#64748b" font-size="16">&rarr;</text>
+
+  <!-- STEP 3: Voice Reminder Synthesis -->
+  <g transform="translate(610, 50)">
+    <rect x="0" y="0" width="240" height="110" rx="8" fill="#0f172a" stroke="#10b981" stroke-width="1.2" />
+    <rect x="0" y="0" width="240" height="24" rx="8" fill="rgba(16, 185, 129, 0.12)" />
+    <text class="mono" x="12" y="16" fill="#34d399" font-size="10" font-weight="700">STEP 3: TIMBRE VOICE REMINDER</text>
+    
+    <text class="sans" x="12" y="44" fill="#e2e8f0" font-size="11" font-weight="600">Respectful Hindi Reminder</text>
+    <text class="mono" x="12" y="62" fill="#94a3b8" font-size="9.5">Voice: Pranav (Flagship Hindi Male)</text>
+    <text class="mono" x="12" y="78" fill="#94a3b8" font-size="9.5">Personalized with audited PTP</text>
+    <text class="mono" x="12" y="96" fill="#34d399" font-size="9">&check; Instant Audio Playback &amp; WAV</text>
+  </g>
+</svg>

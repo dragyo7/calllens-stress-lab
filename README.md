@@ -1,12 +1,18 @@
 # CallLens — Speech Intelligence & Telephony Evaluation Platform
 ### Unified Indic Speech Workstation, WebSocket Live Playground & Telephony Stress Benchmarking
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Tests: 137 Passing](https://img.shields.io/badge/tests-137%20passed-brightgreen.svg)]()
-[![Safety Cap: Enforced](https://img.shields.io/badge/safety--cap-enforced-orange.svg)]()
-[![Provenance: Isolated](https://img.shields.io/badge/provenance-isolated-blueviolet.svg)]()
-[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+<p align="center">
+  <img src="docs/assets/banner.svg" width="100%" alt="CallLens Platform Banner" />
+</p>
+
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+" /></a>
+  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <img src="https://img.shields.io/badge/tests-137%20passed-brightgreen.svg" alt="Tests: 137 Passing" />
+  <img src="https://img.shields.io/badge/safety--cap-434%20max-orange.svg" alt="Safety Cap: Enforced" />
+  <img src="https://img.shields.io/badge/provenance-strictly%20isolated-blueviolet.svg" alt="Provenance: Isolated" />
+  <a href="https://creativecommons.org/licenses/by/4.0/"><img src="https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg" alt="License: CC BY 4.0" /></a>
+</p>
 
 > **Notice & Scope Clarification:** CallLens evaluates automatic speech recognition (ASR) robustness using **read speech (FLEURS Hindi `hi_in`)** and **synthetic TTS speech (Gnani Timbre v2.5)** under simulated acoustic degradation (telephony bandpass 300–3400 Hz, 8 kHz G.711 &mu;‑law companding, and calibrated Gaussian noise). **Simulated telephony on read speech is not identical to production call-center audio**, which features spontaneous speaker disfluencies, overlapping crosstalk, acoustic reverberation, and bursty packet loss. Benchmark metrics must be interpreted strictly within these controlled experimental parameters.
 
@@ -167,7 +173,48 @@ flowchart TD
     BFSIRules --> DB
 ```
 
-### 3.1 Call Data Persistence, Security & Storage Lifecycle
+### 3.1 Telephony Channel Degradation Chain (ITU-T G.712 / G.711)
+
+CallLens implements the full international telephony acoustic standard across 5 reproducible stages:
+
+<p align="center">
+  <img src="docs/assets/telephony_pipeline.svg" width="100%" alt="ITU-T G.712 Signal Chain" />
+</p>
+
+1. **Clean Input:** Standardized 16 kHz 16-bit linear PCM audio (FLEURS Hindi `hi_in` dataset).
+2. **ITU-T G.712 Bandpass:** 8th-order Butterworth IIR bandpass filtering restricting frequency response between 300 Hz and 3400 Hz (attenuation &ge; 40 dB in stopband).
+3. **Polyphase Resampling & $\mu$-Law Companding:** Downsampled to 8 kHz and quantized using logarithmic G.711 $\mu$-law compression ($\mu = 255$, 8 bits per sample).
+4. **Calibrated Gaussian Noise Injection:** Calibrated to exact target Signal-to-Noise Ratios (10 dB SNR moderate noise, 0 dB SNR severe street/traffic noise) within $\pm 0.5$ dB.
+5. **ASR Recovery:** Reconstructed to 16 kHz for head-to-head recognition on Gnani Prisma v2.5 and v3.0.
+
+---
+
+### 3.2 Human-in-the-Loop BFSI Follow-up Desk Workflow
+
+<p align="center">
+  <img src="docs/assets/bfsi_workflow.svg" width="100%" alt="BFSI Follow-up Desk Workflow" />
+</p>
+
+1. **Call Audio Ingest:** Ingests representative Hindi debt collection calls where customers negotiate repayment.
+2. **Regex & Heuristic Entity Extraction:** Extracts customer name, overdue amount (in Indian numbering: thousands, lakhs, crores), original due date, promise-to-pay (PTP) date, and hardship reasons. Strictly flags missing information for human operator review (zero hallucination).
+3. **Personalized Timbre Reminder Calls:** Synthesizes respectful, compliance-vetted Hindi audio reminders via Gnani Timbre neural TTS (flagship voice `Pranav` or `Kaveri`) with instant browser playback and WAV download.
+
+---
+
+### 3.3 WebSocket Audio Transport & Buffered REST Gateway (`/ws/speech`)
+
+<p align="center">
+  <img src="docs/assets/websocket_lifecycle.svg" width="100%" alt="WebSocket Gateway Architecture" />
+</p>
+
+CallLens maintains complete architectural transparency regarding its real-time speech protocol:
+- **Transparent Audio Transport:** Live browser microphone audio is captured in 250ms PCM16 chunks and streamed across a WebSocket connection (`/ws/speech`).
+- **Structured Lifecycle Events:** Emits granular telemetry (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`).
+- **Buffered REST Execution:** Assembles the incoming chunks on the backend and dispatches an atomic REST call to the Gnani ASR engine upon `stop`. Zero simulated streaming illusions—evaluators see exact network timings and latencies.
+
+---
+
+### 3.4 Call Data Persistence, Security & Storage Lifecycle
 
 CallLens treats speech recording data as persistent, audit-verifiable assets stored securely outside Git in `../calllens-data`:
 
