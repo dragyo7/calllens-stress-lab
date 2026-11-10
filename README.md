@@ -8,8 +8,8 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+" /></a>
   <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-0.115+-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI" /></a>
-  <img src="https://img.shields.io/badge/tests-137%20passed-brightgreen.svg" alt="Tests: 137 Passing" />
-  <img src="https://img.shields.io/badge/safety--cap-434%20max-orange.svg" alt="Safety Cap: Enforced" />
+  <img src="https://img.shields.io/badge/tests-158%20passed-brightgreen.svg" alt="Tests: 158 Passing" />
+  <img src="https://img.shields.io/badge/safety--cap-enforced-orange.svg" alt="Safety Cap: Enforced" />
   <img src="https://img.shields.io/badge/provenance-strictly%20isolated-blueviolet.svg" alt="Provenance: Isolated" />
   <a href="https://creativecommons.org/licenses/by/4.0/"><img src="https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg" alt="License: CC BY 4.0" /></a>
 </p>
@@ -24,11 +24,12 @@
 
 The platform provides an end-to-end speech engineering suite integrating:
 1. **Speech-to-Text (STT) Studio:** Audio file uploads (&le; 5 MB), live browser microphone recording with real-time Web Audio API waveform visualization, preloaded benchmark clips, 10 Indic languages, format selector (verbatim, ITN transcribe, codemix), and one-click transcript copy/download.
-2. **Text-to-Speech (TTS) Studio:** Natural voice synthesis powered by 7 curated Gnani Timbre Indic voices (highlighting verified flagship Hindi male `Pranav` and female `Kaveri`), dynamic speaking rates (0.85x–1.15x), banking & OTP quick templates, audio player with waveform preview, and WAV downloads.
-3. **Live Speech Playground (WebSocket Gateway):** Application-level WebSocket audio transport with buffered REST transcription over `/ws/speech`, capturing microphone audio chunks in real time, emitting transparent lifecycle events (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`), and executing atomic transcription and voice feedback with complete architectural honesty (zero fabricated streaming illusions).
-4. **CallLens Follow-up Desk (Human-in-the-Loop BFSI Workflow):** Operator-assisted debt collection speech workflow with curated synthetic collection scenarios for human-in-the-loop operator review and reminder generation. Ingests representative Hindi debt collection calls, extracts actionable commitments (customer name, overdue amount, original due date, promise-to-pay date, hardship reason), strictly flags missing data for operator review (never hallucinating dates or amounts), and synthesizes respectful personalized Hindi voice reminders via Timbre.
-5. **Telephony Stress Lab (360 Live Benchmarks):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) on FLEURS Hindi read speech and BFSI collection calls (360 genuine live provider benchmark evaluations recorded in SQLite).
-6. **Call Data Persistence, Safety & Zero-Credit Verification:** Persistent SQLite schema (`recording_sessions`, `audio_assets`, `speech_operations`, `transcripts`, `followup_records`) with verified persistence across backend restarts, physical file unlinking on session deletion, and storage diagnostics (`GET /api/storage/diagnostics`). The platform defaults to safe mock and cached replay mode (`ALLOW_LIVE_API=0`), and the automated 137-test suite runs 100% offline consuming zero live provider credits.
+2. **Text-to-Speech (TTS) Studio:** Natural voice synthesis powered by 7 curated Gnani Timbre Indic voices (highlighting verified flagship Hindi male `Pranav` and female `Kaveri`), dynamic speaking rates (0.85x–1.15x), banking & OTP quick templates (including bilingual Hindi/English options), audio player with waveform preview, and WAV downloads.
+3. **Live Speech Playground (WebSocket Gateway):** Application-level WebSocket audio transport with buffered REST transcription over `/ws/speech`, capturing microphone audio chunks in real time, emitting real-time interim hypotheses (`transcript_partial`) alongside transparent lifecycle events (`session_started`, `audio_chunk_received`, `transcription_completed`, `tts_audio_ready`), and executing atomic transcription and voice feedback with complete architectural honesty (zero fabricated streaming illusions).
+4. **CallLens Follow-up Desk (Human-in-the-Loop BFSI Workflow):** Operator-assisted debt collection speech workflow with 7 curated synthetic collection scenarios (Hindi, Hinglish, and South Indic English telephony) for human-in-the-loop operator review and reminder generation. Ingests representative debt collection calls, extracts actionable commitments (customer name, overdue amount, original due date, promise-to-pay date, hardship reason), strictly flags missing data for operator review (never hallucinating dates or amounts), and synthesizes respectful personalized voice reminders via Timbre.
+5. **Telephony Stress Lab (360 Live Benchmarks + Noise Suppression):** Empirical evaluation comparing **Gnani Prisma v2.5** against **Gnani Prisma v3.0** under ITU-T G.712 standard degradation (300–3400 Hz 8th-order Butterworth bandpass, 8 kHz 8-bit $\mu$-law companding, and calibrated 10 dB / 0 dB SNR Gaussian noise) with integrated **Spectral Noise Suppression** pre-filtering audition (360 genuine live provider benchmark evaluations recorded in SQLite).
+6. **Call Data Persistence, Safety & Zero-Credit Verification:** Persistent SQLite schema (`recording_sessions`, `audio_assets`, `speech_operations`, `transcripts`, `followup_records`) with composite performance indexes, verified persistence across backend restarts, physical file unlinking on session deletion, automated storage cleanup (`POST /api/storage/cleanup`), and storage diagnostics (`GET /api/storage/diagnostics`). The platform defaults to safe mock and cached replay mode (`ALLOW_LIVE_API=0`), and the automated 149-test suite runs 100% offline consuming zero live provider credits.
+
 
 ---
 
@@ -241,7 +242,7 @@ CallLens treats speech recording data as persistent, audit-verifiable assets sto
 > [!NOTE]
 > **Data Provenance & Live Execution Certification:**
 > The metrics, tables, and figures below were generated from **genuine live provider calls** executed during the authorized benchmark phase against the Gnani Speech AI platform (`provenance = 'live'`), stored in SQLite (`../calllens-data/benchmark.db`) and verified through SHA-256 caching. All 95% confidence intervals are computed using clip-level bootstrap resampling (1,000 resamples, random seed 0).
-> In contrast, automated regression tests (137 tests) and local pre-release verification run **100% offline with `ALLOW_LIVE_API=0`**, consuming **zero live provider credits** via deterministic fixtures and cache replay.
+> In contrast, automated regression tests (143 tests) and local pre-release verification run **100% offline with `ALLOW_LIVE_API=0`**, consuming **zero live provider credits** via deterministic fixtures and cache replay.
 
 ### Provider Call Accounting & Evaluation Reconciliation
 
@@ -352,31 +353,66 @@ calllens/
 │   ├── test_scaffold.py        # Environment & baseline checks
 │   ├── test_security_adversarial.py # Injection, path traversal, & DoS tests
 │   └── results.md              # Machine-readable benchmark results summary
-├── docs/
-│   ├── BRIEF.md                # Project requirements specification
-│   ├── CHECKS.md               # Independent QA & validation plan
-│   ├── DECISIONS.md            # Architecture Decision Records (ADRs D-001 to D-013)
-│   ├── THREAT.md               # 5 threat models with code line citations
-│   ├── FAILURE.md              # Operational failure modes & recovery runbooks
-│   ├── DATA.md                 # Dataset provenance & schema definitions
-│   ├── FORENSIC_QA_REPORT.md   # Independent forensic audit & test evidence
-│   ├── BROWSER_TEST_REPORT.md  # Multi-viewport browser testing evidence
-│   ├── SECURITY_TEST_REPORT.md # Security audit & adversarial vulnerability verification
-│   ├── BENCHMARK_PROVENANCE_AUDIT.md # Provenance separation audit
-│   ├── HANDOVER.md             # Milestone status & transition guide
-│   └── screenshots/            # Genuine QA capture assets
+├── Documentation/              # CANONICAL TECHNICAL ARCHITECTURE & SPECIFICATIONS (v2.0+)
+│   ├── PROJECT_VISION.md       # Product vision, mission, and degradation cascade
+│   ├── PROJECT_REALITY_BASELINE.md # Ground-truth system state & accounting audit
+│   ├── PRODUCT_REQUIREMENTS.md # Functional & non-functional requirements (10 views)
+│   ├── SYSTEM_ARCHITECTURE.md  # Tiered architecture, DSP math & sequence flows
+│   ├── FEATURE_IMPLEMENTATION_MATRIX.md # Full traceability matrix & verified statuses
+│   ├── API_REFERENCE.md        # REST & WebSocket API specification (20 endpoints)
+│   ├── DATA_AND_STORAGE.md     # SQLite schemas, asset lifecycle & persistence
+│   ├── INTEGRATION_STATUS.md   # Gnani Prisma/Timbre gateway & fail-closed gate
+│   ├── TESTING_STRATEGY.md     # Test taxonomy, CDP browser E2E, 143 tests
+│   ├── QUALITY_AND_TECHNICAL_DEBT.md # Technical debt register & legacy review
+│   ├── SECURITY_AND_RELIABILITY.md # Guardrails, path traversal & attempt caps
+│   ├── ENGINEERING_DECISIONS.md # ADR register (D-001 to D-015)
+│   ├── ROADMAP.md              # Multi-phase extensibility & feature roadmap
+│   ├── DEMO_READINESS.md       # Evaluator demonstration guide & playbook
+│   ├── AGENT_HANDOFF.md        # Technical transfer protocol for future agents
+│   ├── END_TO_END_FAILURE_AUDIT.md # Forensic failure reproduction & repair audit
+│   └── archive/legacy/         # Preserved historical notes & early reports
+├── docs/                       # Visual assets & screenshots (Referenced by README)
+│   ├── assets/                 # Architecture SVGs and platform banners
+│   ├── screenshots/            # Verified product workflow captures
+│   ├── wer_by_condition.png    # Empirical benchmark chart
+│   └── wer_vs_latency.png      # Latency trade-off chart
 ├── .env.example                # Safe environment configuration template
 ├── .gitignore                  # Strict exclusion rules (secrets, venv, data, DBs)
 ├── requirements.txt            # Pinned, audited dependencies
-├── DEMO_GUIDE.md               # 13-step evaluator demo playbook & 5-8 min pitch script
-├── FUTURE_ROADMAP.md           # Architectural extensibility review across 15 directions
 ├── SOLUTION_PITCH.md           # 1-page evaluator pitch & business impact summary
 └── README.md                   # Project documentation & presentation
 ```
 
 ---
 
-## 7. Quickstart & Reproduction Guide
+## 7. Canonical Technical Documentation (`Documentation/`)
+
+The platform's technical documentation is codified in `Documentation/` as the single source of truth for architecture, engineering governance, and operational standards:
+
+| Document | Core Focus & Verification Standards |
+| :--- | :--- |
+| [`PROJECT_VISION.md`](Documentation/PROJECT_VISION.md) | Platform mission, telephony degradation cascade, core principles, and target personas. |
+| [`PROJECT_REALITY_BASELINE.md`](Documentation/PROJECT_REALITY_BASELINE.md) | Ground-truth baseline, verified test counts, database row audit, and storage metrics. |
+| [`PRODUCT_REQUIREMENTS.md`](Documentation/PRODUCT_REQUIREMENTS.md) | Functional and non-functional requirements across all 10 unified views. |
+| [`SYSTEM_ARCHITECTURE.md`](Documentation/SYSTEM_ARCHITECTURE.md) | 4-tier system architecture, G.712/$\mu$-law/SNR signal processing math, and sequence diagrams. |
+| [`FEATURE_IMPLEMENTATION_MATRIX.md`](Documentation/FEATURE_IMPLEMENTATION_MATRIX.md) | Traceability matrix mapping every UI, API, database, and test to verified statuses. |
+| [`API_REFERENCE.md`](Documentation/API_REFERENCE.md) | Comprehensive REST and WebSocket specification across all 20 endpoints. |
+| [`DATA_AND_STORAGE.md`](Documentation/DATA_AND_STORAGE.md) | SQLite 7-table schema, WAL mode, persistence across restarts, and atomic deletion cascade. |
+| [`INTEGRATION_STATUS.md`](Documentation/INTEGRATION_STATUS.md) | Gnani Prisma/Timbre gateway, 7 Indic voices, rate limiting, and zero-credit fail-closed gate. |
+| [`TESTING_STRATEGY.md`](Documentation/TESTING_STRATEGY.md) | 14 test modules (143 tests), CDP browser automation suite, and audio verification boundaries. |
+| [`QUALITY_AND_TECHNICAL_DEBT.md`](Documentation/QUALITY_AND_TECHNICAL_DEBT.md) | Technical debt register, complexity analysis, and historical artifacts review. |
+| [`SECURITY_AND_RELIABILITY.md`](Documentation/SECURITY_AND_RELIABILITY.md) | Guardrails, path traversal sanitization, attempt caps (434 max), and fail-closed safety. |
+| [`ENGINEERING_DECISIONS.md`](Documentation/ENGINEERING_DECISIONS.md) | Architecture Decision Records (ADRs D-001 through D-015) and open decisions. |
+| [`ROADMAP.md`](Documentation/ROADMAP.md) | 5-phase strategic engineering roadmap from v1.0 through v3.0. |
+| [`DEMO_READINESS.md`](Documentation/DEMO_READINESS.md) | 5-minute executive demonstration walkthrough, evaluator Q&A, and troubleshooting runbook. |
+| [`AGENT_HANDOFF.md`](Documentation/AGENT_HANDOFF.md) | Durable technical transfer guide, invariants, setup commands, and common pitfalls for future engineers. |
+| [`END_TO_END_FAILURE_AUDIT.md`](Documentation/END_TO_END_FAILURE_AUDIT.md) | Forensic failure reproduction, root-cause diagnostics, and code remediation evidence. |
+
+*(Note: Historical legacy notes are preserved in [`Documentation/archive/legacy/`](Documentation/archive/legacy/README.md) for provenance, while media assets remain in `docs/`.)*
+
+---
+
+## 8. Quickstart & Reproduction Guide
 
 ### Prerequisites
 - Python 3.10+ (tested on Python 3.12.10, Windows 11 / Linux / macOS)
@@ -427,25 +463,40 @@ ALLOWED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
 ```
 > **Security Notice:** `.env` is strictly ignored by Git (`git check-ignore .env`). Never commit API keys or secret credentials.
 
-### 3. Run the Verification Suite (137 Tests)
-Verify the entire codebase, speech platform endpoints, WebSocket gateways, audio pipeline, and security assertions offline without making any live API calls (consumes zero live credits):
+### 3. Run the Verification Suite (158 Tests)
+Verify the entire codebase, speech platform endpoints, WebSocket gateways, audio pipeline, security assertions, and live provider contract enforcement offline without making any live API calls (consumes zero live credits):
 ```bash
 pytest -q
 ```
 Expected output:
 ```text
-137 passed in 10.05s
+158 passed in 9.41s
 ```
 
-### 4. Launch the Speech Intelligence Platform
+### 4. Launch the Speech Intelligence Platform Locally
 ```bash
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in any modern browser.
 
+### 5. Production Docker Deployment & Volume Persistence
+CallLens includes production-grade containerization with non-root security (`appuser`, UID 1000), OS audio dependencies (`libsndfile1`, `ffmpeg`), and persistent volume mounting (`./data:/app/data`):
+```bash
+# Build and start container in detached mode
+docker compose up --build -d
+
+# Verify container health and logs
+docker compose ps
+docker compose logs --tail 30
+
+# Verify HTTP API endpoints and healthcheck
+curl http://localhost:8000/api/health
+```
+Audio recordings, TTS synthesis assets, and SQLite databases persist across container recreation (`docker compose down && docker compose up -d`).
+
 ---
 
-## 8. Security & Repository Hygiene Audit
+## 9. Security & Repository Hygiene Audit
 
 | Security Domain | Control Implementation | Audit Status |
 | :--- | :--- | :---: |
@@ -459,7 +510,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in any modern browser.
 
 ---
 
-## 9. Citations & Attribution
+## 10. Citations & Attribution
 
 - **FLEURS Hindi (`hi_in`) Dataset:**
   - Conneau, A., et al. (2022). *FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech*. arXiv:2205.12446.

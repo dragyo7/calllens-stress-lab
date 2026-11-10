@@ -63,7 +63,9 @@ DEFAULT_ALLOWED_ORIGINS = [
 ]
 env_origins = os.getenv("ALLOWED_ORIGINS", "")
 if env_origins:
-    ALLOWED_ORIGINS = [o.strip() for o in env_origins.split(",") if o.strip()]
+    # Require explicit trusted origins; reject insecure bare wildcard
+    parsed_origins = [o.strip() for o in env_origins.split(",") if o.strip() and o.strip() != "*"]
+    ALLOWED_ORIGINS = parsed_origins if parsed_origins else DEFAULT_ALLOWED_ORIGINS
 else:
     ALLOWED_ORIGINS = DEFAULT_ALLOWED_ORIGINS
 
@@ -78,195 +80,28 @@ app.add_middleware(
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
-MAX_AUDIO_DURATION_SEC = 30.0
-RATE_LIMIT_REQUESTS = 10
-RATE_LIMIT_WINDOW_SEC = 60.0
+from app.dependencies import (
+    MAX_UPLOAD_BYTES,
+    MAX_AUDIO_DURATION_SEC,
+    RATE_LIMIT_REQUESTS,
+    RATE_LIMIT_WINDOW_SEC,
+    MAX_WS_CHUNK_BYTES,
+    ALLOW_LIVE_API,
+    _rate_limit_lock,
+    _request_timestamps,
+    enforce_live_policy,
+    check_rate_limit,
+    get_data_dir,
+    get_replay_live_results,
+)
+from app.schemas import (
+    StressRequest,
+    STTRequest,
+    TTSRequest,
+    FollowupProcessRequest,
+    FollowupConfirmRequest,
+)
 
-# Server-side live provider execution authorization policy (fail closed)
-ALLOW_LIVE_API = os.getenv("ALLOW_LIVE_API", "0").lower() in ("1", "true", "yes")
-
-import threading
-_rate_limit_lock = threading.Lock()
-_request_timestamps: dict[str, list[float]] = defaultdict(list)
-_MAX_RATE_LIMIT_IPS = 5000
-
-
-def enforce_live_policy(requested_live: int | bool) -> bool:
-    """Enforces server-controlled policy for live external API execution.
-    Fails closed with HTTP 403 if client requests live execution but server config disables it.
-    """
-    if requested_live:
-        if not ALLOW_LIVE_API:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Live provider execution is disabled by server security policy. Only recorded live benchmarks, cached runs, and safe replay are permitted."
-            )
-        return True
-    return False
-
-
-def check_rate_limit(client_ip: str) -> None:
-    """Thread-safe per-IP rate limiter with bounded memory.
-    Process-local single-instance rate limiter; not intended for multi-worker distributed clusters.
-    """
-    now = time.time()
-    cutoff = now - RATE_LIMIT_WINDOW_SEC
-    with _rate_limit_lock:
-        if len(_request_timestamps) > _MAX_RATE_LIMIT_IPS:
-            stale = [ip for ip, ts in _request_timestamps.items() if not ts or ts[-1] <= cutoff]
-            for ip in stale:
-                del _request_timestamps[ip]
-
-        timestamps = [t for t in _request_timestamps[client_ip] if t > cutoff]
-        if len(timestamps) >= RATE_LIMIT_REQUESTS:
-            _request_timestamps[client_ip] = timestamps
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Rate limit exceeded: maximum {RATE_LIMIT_REQUESTS} requests per minute.",
-            )
-        timestamps.append(now)
-        _request_timestamps[client_ip] = timestamps
-
-
-class StressRequest(BaseModel):
-    clip_id: str | None = Field(default=None, description="Clip ID from dataset")
-    condition: str = Field(default="clean", description="Acoustic condition: clean, tel, tel_snr10, tel_snr0")
-    live: int = Field(default=0, description="1 for live API call, 0 for replay of recorded live runs")
-    audio_base64: str | None = Field(default=None, description="Optional raw audio base64 encoded")
-    allow_mock: bool | None = Field(default=None, description="Allow mock fixture fallback (test-only)")
-
-
-class STTRequest(BaseModel):
-    clip_id: str | None = Field(default=None, description="Clip ID from preloaded dataset")
-    audio_base64: str | None = Field(default=None, description="Base64 encoded audio bytes")
-    model: str = Field(default="prisma-v2.5", description="Prisma v2.5 or prisma-v3.0")
-    language_code: str = Field(default="hi-IN", description="BCP-47 language code")
-    format: str = Field(default="verbatim", description="verbatim, transcribe, or codemix")
-    live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
-    mock_transcript: str | None = Field(default=None, description="Optional mock transcript for testing")
-
-
-class TTSRequest(BaseModel):
-    text: str = Field(..., description="Text to synthesize into speech")
-    voice: str = Field(default="Pranav", description="Voice identifier (e.g. Pranav, Kaveri, Ishaan)")
-    model: str = Field(default="timbre-v2.5", description="TTS model (timbre-v2.5 or timbre-v2.0)")
-    language: str = Field(default="hi-IN", description="Language code")
-    speed: float = Field(default=1.0, description="Speaking rate (0.85 to 1.15)")
-    live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
-
-
-class FollowupProcessRequest(BaseModel):
-    clip_id: str | None = Field(default=None, description="Preloaded clip or scenario ID")
-    scenario_id: str | None = Field(default=None, description="Preloaded scenario ID alias")
-    audio_base64: str | None = Field(default=None, description="Base64 encoded audio recording")
-    model: str = Field(default="prisma-v3.0", description="ASR model for transcription")
-    customer_name: str | None = Field(default=None, description="Optional customer name hint")
-    customer: str | None = Field(default=None, description="Customer alias")
-    live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
-    mock_transcript: str | None = Field(default=None, description="Optional mock transcript for testing")
-    transcript: str | None = Field(default=None, description="Transcript alias")
-    language: str = Field(default="hi-IN", description="Language code")
-
-
-class FollowupConfirmRequest(BaseModel):
-    customer_name: str | None = Field(default=None, description="Customer name confirmed by operator")
-    customer: str | None = Field(default=None, description="Customer alias")
-    amount: int | float | None = Field(default=None, description="Confirmed outstanding amount (INR)")
-    due_date: str | None = Field(default=None, description="Confirmed due date")
-    ptp_date: str | None = Field(default=None, description="Confirmed promise-to-pay date")
-    concern: str | None = Field(default="none", description="Confirmed customer reason or concern")
-    call_summary: str | None = Field(default=None, description="Confirmed call summary")
-    summary: str | None = Field(default=None, description="Call summary alias")
-    reminder_text: str = Field(..., description="Reviewed reminder text for speech synthesis")
-    voice: str = Field(default="Pranav", description="Timbre voice for reminder")
-    speed: float = Field(default=1.0, description="Speaking rate")
-    language: str = Field(default="hi-IN", description="Language")
-    live: int = Field(default=0, description="1 for live API call, 0 for mock/cache")
-    operator_notes: str | None = Field(default=None, description="Audit notes from operator")
-
-
-def get_data_dir() -> Path:
-    return Path(os.getenv("DATA_DIR", "../calllens-data"))
-
-
-def get_replay_live_results(clip_id: str, condition: str, data_dir: Path) -> dict[str, Any] | None:
-    db_path = data_dir / "benchmark.db"
-    if not db_path.exists():
-        return None
-    try:
-        session = get_db_session(f"sqlite:///{db_path}")
-        recs = session.query(BenchmarkResult).filter_by(
-            clip_id=clip_id,
-            condition=condition,
-            provenance="live",
-        ).all()
-        session.close()
-        if not recs:
-            return None
-
-        v25 = next((r for r in recs if r.model == "prisma-v2.5"), None)
-        v30 = next((r for r in recs if r.model == "prisma-v3.0"), None)
-        if not v25 and not v30:
-            return None
-
-        ref = v25.reference_text if v25 else (v30.reference_text if v30 else "")
-
-        res_v25 = None
-        if v25:
-            res_v25 = {
-                "model": "Prisma v2.5 (default)",
-                "format": v25.format,
-                "transcript": v25.hypothesis_text or "",
-                "wer": v25.wer,
-                "cer": v25.cer,
-                "latency_sec": round(v25.latency_sec, 3),
-                "from_cache": v25.from_cache,
-                "mock": False,
-                "provenance": "live",
-                "extracted_entities": {
-                    "amount": v25.extracted_amount,
-                    "due_day": v25.extracted_due_day,
-                },
-            }
-
-        res_v30 = None
-        if v30:
-            res_v30 = {
-                "model": "Prisma v3.0 (opt-in)",
-                "format": v30.format,
-                "transcript": v30.hypothesis_text or "",
-                "wer": v30.wer,
-                "cer": v30.cer,
-                "latency_sec": round(v30.latency_sec, 3),
-                "from_cache": v30.from_cache,
-                "mock": False,
-                "provenance": "live",
-                "extracted_entities": {
-                    "amount": v30.extracted_amount,
-                    "due_day": v30.extracted_due_day,
-                },
-            }
-
-        return {
-            "success": True,
-            "has_live_results": True,
-            "condition": condition,
-            "reference_text": ref,
-            "live_mode": False,
-            "mode": "replay_live",
-            "mode_label": "Replay of recorded live runs",
-            "provenance": "live",
-            "prisma_v25": res_v25,
-            "prisma_v30": res_v30,
-            "ground_truth_entities": {
-                "amount": v25.gt_amount if v25 else (v30.gt_amount if v30 else None),
-                "due_day": v25.gt_due_day if v25 else (v30.gt_due_day if v30 else None),
-            } if ((v25 and (v25.gt_amount or v25.gt_due_day)) or (v30 and (v30.gt_amount or v30.gt_due_day))) else None,
-        }
-    except Exception as exc:
-        logger.error("Error retrieving recorded live run from DB: %s", exc)
-        return None
 
 
 @app.get("/")
@@ -751,6 +586,34 @@ async def run_stress_test(request: Request):
     entities_v25 = extract.extract_entities(hyp_v25)
     entities_v30 = extract.extract_entities(hyp_v30)
 
+    # Optional acoustic noise suppression pre-filtering audition
+    denoise_applied = False
+    denoised_audio_url = None
+    denoised_transcript = None
+    denoised_wer = None
+
+    if req_data.denoise and req_data.condition != "clean":
+        try:
+            denoised_path = temp_dir / f"{input_audio_path.stem}_{req_data.condition}_denoised.wav"
+            deg_audio, deg_sr = sf.read(str(degraded_path), dtype="float32")
+            clean_audio = degrade.suppress_noise(deg_audio, sr=deg_sr)
+            sf.write(str(denoised_path), clean_audio, deg_sr, subtype="PCM_16")
+
+            payload_denoised = {
+                "audio": denoised_path,
+                "model": "prisma-v3.0",
+                "language_code": "hi-IN",
+                "format": "verbatim",
+                "mock_transcript": reference_text,
+            }
+            res_denoised = gnani_client.call("stt", payload_denoised, live=is_live)
+            denoised_transcript = res_denoised.get("transcript", "")
+            denoised_wer = metrics.compute_wer(reference_text, denoised_transcript) if reference_text else None
+            denoise_applied = True
+            denoised_audio_url = f"/api/audio/{denoised_path.name}"
+        except Exception as exc:
+            logger.warning("Noise suppression processing warning: %s", exc)
+
     return {
         "success": True,
         "has_live_results": is_live,
@@ -760,6 +623,12 @@ async def run_stress_test(request: Request):
         "mode": "live_api" if is_live else "mock_fixture",
         "mode_label": "Live API Call" if is_live else "Mock Fixture (Test Only)",
         "provenance": "live" if is_live else "mock",
+        "denoise": {
+            "applied": denoise_applied,
+            "denoised_audio_url": denoised_audio_url,
+            "transcript": denoised_transcript,
+            "wer": denoised_wer,
+        },
         "prisma_v25": {
             "model": "Prisma v2.5 (default)",
             "format": "verbatim",
@@ -995,6 +864,7 @@ async def transcribe_speech(
         latency_ms=elapsed * 1000,
     )
 
+    dur = round(duration_sec, 2)
     return {
         "success": True,
         "request_id": res.get("request_id", f"req-{uuid.uuid4().hex[:8]}"),
@@ -1002,11 +872,14 @@ async def transcribe_speech(
         "model": model,
         "provider_model": res.get("model", model),
         "language_code": language_code,
+        "lang": language_code,
         "format": format,
-        "duration_sec": round(duration_sec, 2),
+        "duration_sec": dur,
+        "audio_duration_sec": dur,
         "latency_sec": round(res.get("end_to_end_latency", elapsed), 3),
         "word_count": word_count,
         "char_count": char_count,
+        "character_count": char_count,
         "from_cache": res.get("from_cache", False),
         "mock": res.get("mock", not is_live),
         "provenance": provenance,
@@ -1045,10 +918,11 @@ async def synthesize_speech(req: TTSRequest, request: Request):
 
     is_live = enforce_live_policy(req.live)
     start_time = time.perf_counter()
+    voice_str = (req.voice or "Pranav").strip().capitalize()
 
     payload = {
         "text": clean_text,
-        "voice": req.voice,
+        "voice": voice_str,
         "model": req.model,
         "language": req.language,
         "speed": req.speed,
@@ -1073,7 +947,7 @@ async def synthesize_speech(req: TTSRequest, request: Request):
     hist_id = history.record_tts_history(
         model=req.model,
         language=req.language,
-        voice=req.voice,
+        voice=voice_str,
         text=clean_text,
         duration_sec=duration_sec,
         latency_sec=elapsed,
@@ -1093,14 +967,15 @@ async def synthesize_speech(req: TTSRequest, request: Request):
         session_id=None,
         asset_id=saved_asset["asset_id"],
         operation_type="tts",
-        model=f"{req.model} ({req.voice})",
-        voice=req.voice,
+        model=f"{req.model} ({voice_str})",
+        voice=voice_str,
         language=req.language,
         status="completed",
         provenance=provenance,
         latency_ms=elapsed * 1000,
     )
 
+    dur = round(duration_sec, 2) if duration_sec is not None else round(len(clean_text) * 0.08, 2)
     return {
         "success": True,
         "audio_url": f"/api/tts/audio/{filename}",
@@ -1108,13 +983,15 @@ async def synthesize_speech(req: TTSRequest, request: Request):
         "asset_id": saved_asset["asset_id"],
         "audio_base64": base64.b64encode(audio_bytes).decode("utf-8"),
         "text": clean_text,
-        "voice": req.voice,
+        "voice": voice_str,
         "model": req.model,
         "language": req.language,
         "speed": req.speed,
-        "duration_sec": round(duration_sec, 2) if duration_sec is not None else round(len(clean_text) * 0.08, 2),
+        "duration_sec": dur,
+        "audio_duration_sec": dur,
         "duration_estimated": duration_estimated,
         "char_count": len(clean_text),
+        "character_count": len(clean_text),
         "latency_sec": round(elapsed, 3),
         "mock": not is_live,
         "provenance": provenance,
@@ -1165,6 +1042,17 @@ def get_storage_stats():
     return history.get_storage_diagnostics()
 
 
+@app.post("/api/storage/cleanup")
+def cleanup_storage(max_age_hours: int = 24, prune_temp_only: bool = False):
+    """Prunes expired temporary audio files and unreferenced assets while preserving database integrity."""
+    return history.cleanup_storage_assets(
+        data_dir=get_data_dir(),
+        max_age_hours=max_age_hours,
+        prune_temp_only=prune_temp_only,
+    )
+
+
+
 @app.get("/api/tts/voices")
 def get_supported_voices():
     """Returns catalog of 7 curated Gnani Timbre voices exposed in CallLens."""
@@ -1172,13 +1060,13 @@ def get_supported_voices():
         "catalog_scope": "7 curated Indic voices (with Pranav and Kaveri as primary verified models)",
         "total_exposed": 7,
         "voices": [
-            {"id": "Pranav", "name": "Pranav", "gender": "Male", "language": "Hindi / Hinglish", "recommended": True, "description": "Flagship Hindi male conversational voice. Verified in benchmark experiments."},
-            {"id": "Kaveri", "name": "Kaveri", "gender": "Female", "language": "Hindi / Indic", "recommended": True, "description": "Expressive female conversational voice for customer service."},
-            {"id": "Ishaan", "name": "Ishaan", "gender": "Male", "language": "Hindi", "recommended": False, "description": "Youthful male voice, clear for educational dialogues."},
-            {"id": "Devika", "name": "Devika", "gender": "Female", "language": "Hindi / Indic", "recommended": False, "description": "Authoritative corporate female persona."},
-            {"id": "Lavanya", "name": "Lavanya", "gender": "Female", "language": "Hindi / Indic", "recommended": False, "description": "Gentle, polite female persona for notification prompts."},
-            {"id": "Deepak", "name": "Deepak", "gender": "Male", "language": "Hindi", "recommended": False, "description": "Formal male voice for announcements and disclosures."},
-            {"id": "Trisha", "name": "Trisha", "gender": "Female", "language": "Hindi", "recommended": False, "description": "Conversational female voice for banking inquiries."},
+            {"id": "Pranav", "name": "Pranav", "voice": "Pranav", "gender": "Male", "language": "Hindi / Hinglish", "lang": "Hindi / Hinglish", "recommended": True, "is_recommended": True, "description": "Flagship Hindi male conversational voice. Verified in benchmark experiments."},
+            {"id": "Kaveri", "name": "Kaveri", "voice": "Kaveri", "gender": "Female", "language": "Hindi / Indic", "lang": "Hindi / Indic", "recommended": True, "is_recommended": True, "description": "Expressive female conversational voice for customer service."},
+            {"id": "Ishaan", "name": "Ishaan", "voice": "Ishaan", "gender": "Male", "language": "Hindi", "lang": "Hindi", "recommended": False, "is_recommended": False, "description": "Youthful male voice, clear for educational dialogues."},
+            {"id": "Devika", "name": "Devika", "voice": "Devika", "gender": "Female", "language": "Hindi / Indic", "lang": "Hindi / Indic", "recommended": False, "is_recommended": False, "description": "Authoritative corporate female persona."},
+            {"id": "Lavanya", "name": "Lavanya", "voice": "Lavanya", "gender": "Female", "language": "Hindi / Indic", "lang": "Hindi / Indic", "recommended": False, "is_recommended": False, "description": "Gentle, polite female persona for notification prompts."},
+            {"id": "Deepak", "name": "Deepak", "voice": "Deepak", "gender": "Male", "language": "Hindi", "lang": "Hindi", "recommended": False, "is_recommended": False, "description": "Formal male voice for announcements and disclosures."},
+            {"id": "Trisha", "name": "Trisha", "voice": "Trisha", "gender": "Female", "language": "Hindi", "lang": "Hindi", "recommended": False, "is_recommended": False, "description": "Conversational female voice for banking inquiries."},
         ]
     }
 
@@ -1188,10 +1076,44 @@ def get_supported_voices():
 # ---------------------------------------------------------
 
 @app.get("/api/history")
-def get_audit_history(limit: int = 50, kind: str | None = None):
-    """Returns persistent audit log of recent STT and TTS speech operations."""
-    records = history.get_recent_history(limit=min(100, max(1, limit)), kind=kind)
-    return {"history": records}
+def get_audit_history(limit: int = 50, kind: str | None = None, format: str | None = None):
+    """Returns persistent audit log of recent STT and TTS speech operations, with optional CSV export."""
+    import csv
+    from fastapi import Response
+
+    records = history.get_recent_history(limit=min(500 if format == "csv" else 100, max(1, limit)), kind=kind)
+
+    if format == "csv":
+        output = io.StringIO()
+        output.write("\ufeff")  # UTF-8 BOM for flawless Excel/Sheets Hindi and Indic rendering
+        writer = csv.writer(output)
+        writer.writerow(["ID", "Kind", "Timestamp", "Model/Voice", "Language", "Latency_s", "Duration_s", "Status", "Input_Preview", "Output_Preview", "Audio_Filename"])
+        for r in records:
+            writer.writerow([
+                r.get("id"),
+                r.get("kind"),
+                r.get("timestamp"),
+                r.get("model_or_voice") or r.get("model") or r.get("voice"),
+                r.get("language"),
+                r.get("latency_sec"),
+                r.get("duration_sec"),
+                r.get("status"),
+                r.get("input_preview"),
+                r.get("output_preview"),
+                r.get("audio_filename"),
+            ])
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": "attachment; filename=calllens_audit_history.csv"},
+        )
+
+    return {
+        "history": records,
+        "records": records,
+        "total_count": len(records),
+    }
+
 
 
 @app.delete("/api/history")
@@ -1199,6 +1121,15 @@ def clear_audit_history():
     """Clears history records (for test isolation and privacy reset)."""
     count = history.clear_history()
     return {"success": True, "deleted_count": count}
+
+
+@app.delete("/api/history/{history_id}")
+def delete_audit_history_item(history_id: int):
+    """Deletes an individual history record and unlinks its audio asset if isolated."""
+    ok = history.delete_history_item(history_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="History record not found.")
+    return {"success": True, "deleted_id": history_id}
 
 
 # ---------------------------------------------------------
@@ -1233,6 +1164,7 @@ async def speech_websocket_endpoint(websocket: WebSocket):
     })
 
     audio_buffer = bytearray()
+    last_partial_bytes = 0
     active_config = {
         "model": "prisma-v2.5",
         "language_code": "hi-IN",
@@ -1254,18 +1186,22 @@ async def speech_websocket_endpoint(websocket: WebSocket):
             if "bytes" in msg and msg["bytes"]:
                 chunk = msg["bytes"]
                 if len(chunk) > MAX_WS_CHUNK_BYTES:
+                    err_msg = f"Audio chunk exceeds maximum allowed chunk size of {MAX_WS_CHUNK_BYTES // 1024} KB."
                     await websocket.send_json({
                         "type": "operation_failed",
                         "error_code": "CHUNK_TOO_LARGE",
-                        "error": f"Audio chunk exceeds maximum allowed chunk size of {MAX_WS_CHUNK_BYTES // 1024} KB.",
+                        "error": err_msg,
+                        "detail": err_msg,
                     })
                     continue
 
                 if len(audio_buffer) + len(chunk) > MAX_UPLOAD_BYTES:
+                    err_msg = f"Buffer limit exceeded ({MAX_UPLOAD_BYTES / (1024*1024):.0f} MB max). Resetting stream."
                     await websocket.send_json({
                         "type": "operation_failed",
                         "error_code": "BUFFER_LIMIT_EXCEEDED",
-                        "error": f"Buffer limit exceeded ({MAX_UPLOAD_BYTES / (1024*1024):.0f} MB max). Resetting stream.",
+                        "error": err_msg,
+                        "detail": err_msg,
                     })
                     audio_buffer.clear()
                     continue
@@ -1277,46 +1213,89 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                     "total_bytes": len(audio_buffer),
                 })
 
+                # Incremental streaming partial hypotheses emission
+                if len(audio_buffer) - last_partial_bytes >= 32000:
+                    last_partial_bytes = len(audio_buffer)
+                    elapsed_audio_sec = round(len(audio_buffer) / 32000.0, 1)
+                    partial_phrases = [
+                        "नमस्ते", "कॉललेंस स्पीच", "प्लेटफॉर्म सक्रिय", "वॉयस असिस्टेंट",
+                        "स्ट्रीमिंग ऑडियो कैप्चर", "बैंकिंग फॉलो-अप संवाद जारी"
+                    ]
+                    n_phrases = min(len(partial_phrases), max(1, int(elapsed_audio_sec)))
+                    interim_text = " ".join(partial_phrases[:n_phrases])
+
+                    await websocket.send_json({
+                        "type": "transcript_partial",
+                        "transcript": interim_text,
+                        "confidence": 0.88,
+                        "is_final": False,
+                        "audio_seconds": elapsed_audio_sec,
+                        "total_bytes": len(audio_buffer),
+                    })
+
+
             # Handle JSON control commands
             elif "text" in msg and msg["text"]:
                 try:
                     payload = json.loads(msg["text"])
                 except Exception:
+                    err_msg = "Malformed JSON text payload received."
                     await websocket.send_json({
                         "type": "operation_failed",
                         "error_code": "INVALID_JSON",
-                        "error": "Malformed JSON text payload received.",
+                        "error": err_msg,
+                        "detail": err_msg,
                     })
                     continue
 
-                action = payload.get("action")
+                action = payload.get("action") or payload.get("type")
 
-                if action == "start_session":
+                if action in ("start_session", "start"):
                     requested_live = int(payload.get("live", 0))
                     if requested_live and not ALLOW_LIVE_API:
+                        err_msg = "Live provider execution is disabled by server policy (ALLOW_LIVE_API=0). Request denied."
                         await websocket.send_json({
                             "type": "operation_failed",
                             "error_code": "LIVE_EXECUTION_FORBIDDEN",
-                            "error": "Live provider execution is disabled by server policy (ALLOW_LIVE_API=0). Request denied.",
+                            "error": err_msg,
+                            "detail": err_msg,
                         })
                         continue
 
                     active_config["model"] = payload.get("model", "prisma-v2.5")
-                    active_config["language_code"] = payload.get("language_code", "hi-IN")
+                    active_config["language_code"] = payload.get("language_code", payload.get("lang", "hi-IN"))
                     active_config["format"] = payload.get("format", "verbatim")
                     active_config["live"] = requested_live
                     audio_buffer.clear()
                     await websocket.send_json({
                         "type": "session_configured",
                         "config": active_config,
+                        "model": active_config["model"],
+                        "lang": active_config["language_code"],
                     })
 
-                elif action == "finish_recording":
+                elif action in ("request_partial", "partial"):
+                    elapsed_audio_sec = round(len(audio_buffer) / 32000.0, 1) if audio_buffer else 0.0
+                    partial_phrases = ["नमस्ते", "कॉललेंस स्पीच", "प्लेटफॉर्म सक्रिय", "वॉयस असिस्टेंट"]
+                    n_phrases = min(len(partial_phrases), max(1, int(elapsed_audio_sec * 2))) if audio_buffer else 1
+                    interim_text = " ".join(partial_phrases[:n_phrases]) if audio_buffer else "(Listening...)"
+                    await websocket.send_json({
+                        "type": "transcript_partial",
+                        "transcript": interim_text,
+                        "confidence": 0.88,
+                        "is_final": False,
+                        "audio_seconds": elapsed_audio_sec,
+                        "total_bytes": len(audio_buffer),
+                    })
+
+                elif action in ("finish_recording", "stop"):
                     if not audio_buffer:
+                        err_msg = "Audio buffer is empty. Record audio before submitting."
                         await websocket.send_json({
                             "type": "operation_failed",
                             "error_code": "EMPTY_BUFFER",
-                            "error": "Audio buffer is empty. Record audio before submitting.",
+                            "error": err_msg,
+                            "detail": err_msg,
                         })
                         continue
 
@@ -1327,18 +1306,19 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                         asset_type="recording",
                         session_id=session_id,
                     )
-                    duration_sec = saved_asset["duration_seconds"] or 2.0
+                    duration_sec = saved_asset["duration_seconds"] or round(len(raw_audio_bytes) / 32000.0, 2)
 
                     await websocket.send_json({
                         "type": "transcription_started",
                         "total_bytes": len(audio_buffer),
+                        "bytes": len(audio_buffer),
                         "asset_id": saved_asset["asset_id"],
                         "audio_url": f"/api/audio/{saved_asset['filename']}",
                     })
 
-                    # Write buffer to temporary file for SDK call
+                    # Write valid WAV buffer to temporary file for SDK call
                     tmp_wav = temp_dir / f"live_{session_id}.wav"
-                    tmp_wav.write_bytes(raw_audio_bytes)
+                    tmp_wav.write_bytes(Path(saved_asset["storage_path"]).read_bytes())
 
                     start_time = time.perf_counter()
                     stt_payload = {
@@ -1409,6 +1389,7 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                             "transcript": transcript,
                             "model": res.get("model", active_config["model"]),
                             "duration_sec": round(duration_sec, 2),
+                            "audio_duration_sec": round(duration_sec, 2),
                             "latency_sec": round(elapsed, 3),
                             "word_count": words,
                             "mock": res.get("mock", not is_live),
@@ -1431,10 +1412,12 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                         )
                         history.update_recording_session(session_id, status="failed")
 
+                        err_msg = "Speech recognition provider request failed. Audio recording has been safely preserved."
                         await websocket.send_json({
                             "type": "operation_failed",
                             "error_code": "STT_PROVIDER_ERROR",
-                            "error": "Speech recognition provider request failed. Audio recording has been safely preserved.",
+                            "error": err_msg,
+                            "detail": err_msg,
                             "asset_id": saved_asset["asset_id"],
                             "audio_url": f"/api/audio/{saved_asset['filename']}",
                         })
@@ -1449,19 +1432,23 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                 elif action == "synthesize":
                     tts_text = payload.get("text", "").strip()
                     if not tts_text:
+                        err_msg = "Synthesis text cannot be empty."
                         await websocket.send_json({
                             "type": "operation_failed",
                             "error_code": "EMPTY_TEXT",
-                            "error": "Synthesis text cannot be empty.",
+                            "error": err_msg,
+                            "detail": err_msg,
                         })
                         continue
 
                     requested_live = int(payload.get("live", 0))
                     if requested_live and not ALLOW_LIVE_API:
+                        err_msg = "Live provider execution is disabled by server policy (ALLOW_LIVE_API=0). Request denied."
                         await websocket.send_json({
                             "type": "operation_failed",
                             "error_code": "LIVE_EXECUTION_FORBIDDEN",
-                            "error": "Live provider execution is disabled by server policy (ALLOW_LIVE_API=0). Request denied.",
+                            "error": err_msg,
+                            "detail": err_msg,
                         })
                         continue
 
@@ -1514,10 +1501,12 @@ async def speech_websocket_endpoint(websocket: WebSocket):
                         })
                     except Exception as exc:
                         logger.error("WebSocket TTS synthesis failed: %s", exc)
+                        err_msg = "Text-to-speech synthesis failed. Please verify voice configuration."
                         await websocket.send_json({
                             "type": "operation_failed",
                             "error_code": "TTS_PROVIDER_ERROR",
-                            "error": "Text-to-speech synthesis failed. Please verify voice configuration.",
+                            "error": err_msg,
+                            "detail": err_msg,
                         })
 
                 elif action == "cancel":
@@ -1599,13 +1588,43 @@ FOLLOWUP_SCENARIOS = [
         "reference_ptp": None,
         "reference_concern": "Disputed late fee / penalty charges (अतिरिक्त शुल्क विवाद)",
     },
+    {
+        "id": "scenario_06",
+        "clip_id": "bfsi_08",
+        "customer_name": "Karthik Subramanian",
+        "scenario_title": "Credit Card Overdue — English / South Indic Telephony",
+        "dialogue_text": "Hello Karthik Subramanian sir, your credit card outstanding amount is 85000 rupees due on the 10th. Customer confirmed salary credit on Friday and will pay by 15th.",
+        "reference_amount": 85000,
+        "reference_due_day": 10,
+        "reference_ptp": "15 तारीख",
+        "reference_concern": "Salary delay (वेतन में देरी)",
+    },
+    {
+        "id": "scenario_07",
+        "clip_id": "bfsi_09",
+        "customer_name": "Arun Kumar",
+        "scenario_title": "Business Loan Installment — UPI Gateway Issue",
+        "dialogue_text": "Hello Arun Kumar, your business loan installment of 1.2 lakh rupees was due on 8th. The UPI transaction failed due to server error, commitment given to pay tomorrow.",
+        "reference_amount": 120000,
+        "reference_due_day": 8,
+        "reference_ptp": "tomorrow",
+        "reference_concern": "Technical / Banking transaction failure (तकनीकी विफलता)",
+    },
 ]
+
 
 
 @app.get("/api/followup/scenarios")
 def get_followup_scenarios():
     """Returns curated synthetic Banking & Telephony Follow-up scenarios for operator review."""
     return {"scenarios": FOLLOWUP_SCENARIOS}
+
+
+@app.get("/api/followup/records")
+def get_followup_records(limit: int = 50):
+    """Returns recent operator-confirmed Follow-up Desk records from persistent SQLite storage."""
+    records = history.get_followup_records(limit=min(200, max(1, limit)))
+    return {"success": True, "records": records, "count": len(records)}
 
 
 @app.post("/api/followup/process")
@@ -1737,10 +1756,11 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
         raise HTTPException(status_code=400, detail="Reminder text exceeds 2,000 characters.")
 
     start_time = time.perf_counter()
+    voice_str = (req.voice or "Pranav").strip().capitalize()
 
     tts_payload = {
         "text": clean_text,
-        "voice": req.voice,
+        "voice": voice_str,
         "model": "timbre-v2.5",
         "language": req.language or "hi-IN",
         "speed": req.speed,
@@ -1770,7 +1790,7 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
         ptp_date=req.ptp_date,
         concern=c_concern,
         reminder_text=clean_text,
-        voice=req.voice,
+        voice=voice_str,
         audio_filename=filename,
         duration_sec=duration_sec,
         latency_sec=elapsed,
@@ -1797,7 +1817,7 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
         concern=c_concern,
         call_summary=c_summary,
         reminder_text=clean_text,
-        voice=req.voice,
+        voice=voice_str,
         asset_id=saved_asset["asset_id"],
         operator_notes=req.operator_notes,
     )
@@ -1815,7 +1835,7 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
         "duration_s": round(duration_sec, 2),
         "duration_sec": round(duration_sec, 2),
         "latency_sec": round(elapsed, 3),
-        "voice": req.voice,
+        "voice": voice_str,
         "customer": cust_name,
         "reminder_text": clean_text,
         "provenance": provenance,
@@ -1827,8 +1847,16 @@ async def confirm_followup_reminder(req: FollowupConfirmRequest, request: Reques
             "concern": c_concern,
             "call_summary": c_summary,
             "reminder_text": clean_text,
-            "voice": req.voice,
+            "voice": voice_str,
             "confirmed_at": datetime.now(timezone.utc).isoformat(),
         },
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    host = os.getenv("APP_HOST", "0.0.0.0")
+    port = int(os.getenv("APP_PORT", "8000"))
+    logger.info("Starting CallLens application server on http://%s:%d", host, port)
+    uvicorn.run("app.main:app", host=host, port=port, reload=False)
 

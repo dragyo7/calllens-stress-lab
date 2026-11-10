@@ -780,6 +780,7 @@
                 <button type="button" class="btn-template" data-text="सुरक्षा के लिए अपना वन टाइम पासवर्ड किसी के साथ साझा न करें। वैध समय 10 मिनट है।">OTP Security Alert</button>
                 <button type="button" class="btn-template" data-text="कॉललेंस स्पीच इंटेलिजेंस लैब में आपका स्वागत है। हम हिंदी भाषा में ध्वनि परीक्षण कर रहे हैं।">Platform Greeting</button>
                 <button type="button" class="btn-template" data-text="आपका व्यक्तिगत ऋण 2.25 lakh स्वीकृत हो चुका है। कृपया दस्तावेज सत्यापित करें।">Hinglish Loan Approval</button>
+                <button type="button" class="btn-template" data-text="Dear customer, your credit card bill of 85,000 rupees is due tomorrow. Please pay to avoid late charges. Thank you.">English/Indic Loan Alert</button>
               </div>
             </div>
 
@@ -1015,6 +1016,12 @@
               <button type="button" class="scenario-chip" data-id="scenario_05">
                 <strong>Anita Desai</strong> — ₹75,500 (Fee Dispute — Missing PTP Date, Flags Operator)
               </button>
+              <button type="button" class="scenario-chip" data-id="scenario_06">
+                <strong>Karthik Subramanian</strong> — ₹85,000 (English/Indic Telephony, PTP 15th)
+              </button>
+              <button type="button" class="scenario-chip" data-id="scenario_07">
+                <strong>Arun Kumar</strong> — ₹120,000 (UPI Failure, PTP Tomorrow)
+              </button>
             </div>
           </div>
 
@@ -1189,8 +1196,8 @@
               <div class="form-group">
                 <label for="flw-voice-select">Timbre Voice Talent:</label>
                 <select id="flw-voice-select" class="form-control">
-                  <option value="pranav" selected>Pranav (Hindi Male — Courteous & Professional)</option>
-                  <option value="kaveri">Kaveri (Hindi Female — Calm & Friendly)</option>
+                  <option value="Pranav" selected>Pranav (Hindi Male — Courteous & Professional)</option>
+                  <option value="Kaveri">Kaveri (Hindi Female — Calm & Friendly)</option>
                 </select>
               </div>
             </div>
@@ -1409,6 +1416,16 @@
               </div>
             </div>
 
+            <div class="form-group" style="margin-top: 14px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0;">
+                <input type="checkbox" id="chk-denoise" style="width: 18px; height: 18px; accent-color: #10b981;">
+                <div>
+                  <strong style="color: #38bdf8;">Enable Spectral Noise Suppression Filter</strong>
+                  <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Applies frequency-domain spectral Wiener/subtraction filtering to remove stationary background noise prior to ASR inference.</div>
+                </div>
+              </label>
+            </div>
+
             <div class="form-actions-row">
               <button type="submit" id="btn-submit" class="btn btn-primary btn-lg">
                 <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
@@ -1504,6 +1521,27 @@
               </div>
             </div>
           </div>
+
+          <!-- Denoised Audio & ASR Result Card -->
+          <div class="card result-card hidden" id="card-denoised" style="grid-column: 1 / -1; border: 1px solid #10b981; background: rgba(16, 185, 129, 0.03);">
+            <div class="card-header">
+              <div class="model-info">
+                <div class="model-indicator" style="background-color: #10b981;"></div>
+                <h3>Acoustic Noise Suppression Result (Spectral Subtraction Filter)</h3>
+              </div>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">Filter Active</span>
+            </div>
+            <div class="audio-player-wrapper" style="margin: 12px 0;">
+              <label style="display:block; margin-bottom: 6px; font-weight: 500; font-size: 13px; color: #cbd5e1;">Denoised Audio Playback (Audition Cleaned Audio):</label>
+              <audio id="denoised-audio-player" controls preload="none" class="custom-audio-player" style="width: 100%;"></audio>
+            </div>
+            <label style="display:block; margin-bottom: 4px; font-weight: 500; font-size: 13px; color: #cbd5e1;">ASR Transcript on Cleaned Audio:</label>
+            <div class="transcript-box" id="denoised-transcript" style="margin-top: 4px; color: #e2e8f0;">Waiting for evaluation...</div>
+            <div class="metrics-row" style="margin-top: 12px;">
+              <div class="metric"><span class="metric-label">Denoised WER</span><span class="metric-value font-mono" id="denoised-wer" style="color: #10b981;">-</span></div>
+              <div class="metric"><span class="metric-label">Filter Algorithm</span><span class="metric-value font-mono" style="font-size: 13px; color: #38bdf8;">Spectral Wiener / Subtraction</span></div>
+            </div>
+          </div>
         </section>
       </main>
 
@@ -1515,6 +1553,7 @@
             <p class="panel-subtext">Review all saved voice recordings, audio transcripts, and synthesized speech files stored safely on disk.</p>
           </div>
           <div class="header-pill-group">
+            <a href="/api/history?format=csv" class="btn btn-secondary" id="history-export-btn" download="calllens_audit_history.csv">Export CSV</a>
             <button class="btn btn-secondary" id="history-btn-refresh">Refresh List</button>
             <button class="btn btn-ghost" id="history-btn-clear">Clear History</button>
           </div>
@@ -1534,10 +1573,11 @@
                   <th>Input Preview</th>
                   <th>Output Preview</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="history-table-body">
-                <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">No history records found yet.</td></tr>
+                <tr><td colspan="10" style="text-align: center; color: var(--text-muted);">No history records found yet.</td></tr>
               </tbody>
             </table>
           </div>
@@ -1624,12 +1664,20 @@
               <h3>Call Data Persistence & Storage Integrity Diagnostics</h3>
               <p class="panel-subtext">Storage diagnostics tracking persisted recording sessions, SHA-256 audio assets, physical disk footprint, and database integrity.</p>
             </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-storage">
-              <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
-              </svg>
-              Refresh Storage Audit
-            </button>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-storage">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                  <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                </svg>
+                Refresh Storage Audit
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-cleanup-storage" title="Prune expired temporary files and unreferenced assets">
+                <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+                  <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                Run Storage Cleanup
+              </button>
+            </div>
           </div>
           <div class="kpi-grid" style="margin-top: 12px;">
             <div class="kpi-card">

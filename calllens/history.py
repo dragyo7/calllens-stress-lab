@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import soundfile as sf
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text, create_engine
+from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger("calllens.history")
@@ -29,6 +29,9 @@ Base = declarative_base()
 class AudioHistoryRecord(Base):
     """Backward-compatible audit trail record for STT and TTS activity."""
     __tablename__ = "audio_history"
+    __table_args__ = (
+        Index("idx_audio_history_kind_timestamp", "kind", "timestamp"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     kind = Column(String(16), nullable=False)  # 'stt', 'tts', 'followup'
@@ -49,6 +52,9 @@ class AudioHistoryRecord(Base):
 class RecordingSession(Base):
     """Captures the end-to-end lifecycle of a voice recording interaction."""
     __tablename__ = "recording_sessions"
+    __table_args__ = (
+        Index("idx_recording_sessions_status_created", "status", "created_at"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String(64), unique=True, index=True, nullable=False)
@@ -86,6 +92,9 @@ class AudioAsset(Base):
 class SpeechOperation(Base):
     """Tracks atomic STT or TTS engine processing executions."""
     __tablename__ = "speech_operations"
+    __table_args__ = (
+        Index("idx_speech_operations_type_created", "operation_type", "created_at"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     operation_id = Column(String(64), unique=True, index=True, nullable=False)
@@ -142,12 +151,26 @@ class FollowupRecord(Base):
     confirmed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+def _resolve_data_dir(data_dir: Path | None = None) -> Path:
+    """Resolves data directory with fallback from ../calllens-data to ./data."""
+    if data_dir is not None:
+        return data_dir
+    env_dir = os.getenv("DATA_DIR")
+    if env_dir:
+        return Path(env_dir)
+    sibling = Path("../calllens-data")
+    if sibling.exists():
+        return sibling
+    local = Path("data")
+    local.mkdir(parents=True, exist_ok=True)
+    return local
+
+
 def get_storage_dirs(data_dir: Path | None = None) -> tuple[Path, Path]:
     """Returns and ensures storage directories for recordings and generated TTS audio."""
-    if data_dir is None:
-        data_dir = Path(os.getenv("DATA_DIR", "../calllens-data"))
-    rec_dir = data_dir / "recordings"
-    tts_dir = data_dir / "tts_audio"
+    resolved = _resolve_data_dir(data_dir)
+    rec_dir = resolved / "recordings"
+    tts_dir = resolved / "tts_audio"
     rec_dir.mkdir(parents=True, exist_ok=True)
     tts_dir.mkdir(parents=True, exist_ok=True)
     return rec_dir, tts_dir
@@ -155,13 +178,26 @@ def get_storage_dirs(data_dir: Path | None = None) -> tuple[Path, Path]:
 
 def _get_db_session(db_url: str | None = None):
     if db_url is None:
-        data_dir = Path(os.getenv("DATA_DIR", "../calllens-data"))
-        db_path = os.getenv("DATABASE_URL", f"sqlite:///{data_dir}/benchmark.db")
+        resolved = _resolve_data_dir()
+        db_path = os.getenv("DATABASE_URL", f"sqlite:///{resolved}/benchmark.db")
         db_url = db_path
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
+
+    # Ensure composite indexes exist on existing SQLite tables idempotently
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_speech_operations_type_created ON speech_operations(operation_type, created_at)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_recording_sessions_status_created ON recording_sessions(status, created_at)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_audio_history_kind_timestamp ON audio_history(kind, timestamp)"))
+            conn.commit()
+    except Exception as exc:
+        logger.debug("Composite index setup note: %s", exc)
+
     Session = sessionmaker(bind=engine)
     return Session()
+
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +268,20 @@ def update_recording_session(
         session.close()
 
 
+def ensure_wav_bytes(audio_bytes: bytes, sample_rate: int = 16000, channels: int = 1) -> bytes:
+    """Wraps raw 16-bit PCM audio bytes in a standard RIFF/WAV header if not already a container format."""
+    if audio_bytes.startswith(b"RIFF") or audio_bytes.startswith(b"OggS") or audio_bytes.startswith(b"\x1aE\xdf\xa3"):
+        return audio_bytes
+    bio = io.BytesIO()
+    import wave
+    with wave.open(bio, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(2)  # 16-bit PCM
+        wf.setframerate(sample_rate)
+        wf.writeframes(audio_bytes)
+    return bio.getvalue()
+
+
 def save_audio_asset(
     audio_bytes: bytes,
     asset_type: str,
@@ -245,7 +295,6 @@ def save_audio_asset(
     if not audio_bytes:
         raise ValueError("Cannot persist empty audio bytes")
 
-    sha256 = hashlib.sha256(audio_bytes).hexdigest()
     asset_id = f"ast_{uuid.uuid4().hex[:12]}"
 
     # Use random UUID in filename to prevent predictable filenames and information leaks
@@ -259,6 +308,11 @@ def save_audio_asset(
         target_dir = storage_dir
     target_dir.mkdir(parents=True, exist_ok=True)
 
+    # Ensure audio bytes contain valid WAV header if saved as .wav
+    if filename.endswith(".wav"):
+        audio_bytes = ensure_wav_bytes(audio_bytes)
+
+    sha256 = hashlib.sha256(audio_bytes).hexdigest()
     file_path = target_dir / filename
     file_path.write_bytes(audio_bytes)
     file_size = len(audio_bytes)
@@ -275,8 +329,18 @@ def save_audio_asset(
             channels = info.channels
             duration_sec = round(info.duration, 3)
     except Exception:
-        duration_sec = None
-        duration_estimated = 1
+        try:
+            with io.BytesIO(audio_bytes) as bio:
+                import wave
+                with wave.open(bio, "rb") as wf:
+                    sample_rate = wf.getframerate()
+                    channels = wf.getnchannels()
+                    n_frames = wf.getnframes()
+                    if sample_rate > 0:
+                        duration_sec = round(n_frames / float(sample_rate), 3)
+        except Exception:
+            duration_sec = round(len(audio_bytes) / 32000.0, 3)
+            duration_estimated = 1
 
     session = _get_db_session(db_url)
     try:
@@ -443,6 +507,48 @@ def record_followup_entry(
         return flw_id
     finally:
         session.close()
+
+
+def get_followup_records(limit: int = 50, db_url: str | None = None) -> list[dict[str, Any]]:
+    """Retrieves recent operator-confirmed Follow-up Desk records from SQLite."""
+    session = _get_db_session(db_url)
+    try:
+        recs = session.query(FollowupRecord).order_by(FollowupRecord.id.desc()).limit(limit).all()
+        asset_ids = [r.asset_id for r in recs if r.asset_id]
+        asset_map: dict[str, str] = {}
+        if asset_ids:
+            assets = session.query(AudioAsset).filter(AudioAsset.asset_id.in_(asset_ids)).all()
+            for a in assets:
+                asset_map[a.asset_id] = a.filename
+
+        results = []
+        for r in recs:
+            fname = asset_map.get(r.asset_id) if r.asset_id else None
+            audio_url = f"/api/tts/audio/{fname}" if fname else None
+            results.append({
+                "followup_id": r.followup_id,
+                "session_id": r.session_id,
+                "asset_id": r.asset_id,
+                "audio_url": audio_url,
+                "customer_name": r.customer_name,
+                "amount": r.amount,
+                "due_date": r.due_date,
+                "ptp_date": r.ptp_date,
+                "concern": r.concern,
+                "call_summary": r.call_summary,
+                "reminder_text": r.reminder_text,
+                "voice": r.voice,
+                "verification_status": r.verification_status,
+                "operator_notes": r.operator_notes,
+                "confirmed_at": r.confirmed_at.strftime("%Y-%m-%d %H:%M:%S UTC") if r.confirmed_at else "",
+            })
+        return results
+    except Exception as exc:
+        logger.error("Failed to query followup records: %s", exc)
+        return []
+    finally:
+        session.close()
+
 
 
 def get_recording_sessions(
@@ -814,12 +920,16 @@ def get_recent_history(
                 except Exception:
                     meta = {}
 
+            ts_str = r.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC") if r.timestamp else ""
             results.append({
                 "id": r.id,
                 "kind": r.kind,
                 "session_id": r.session_id,
-                "timestamp": r.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC") if r.timestamp else "",
+                "timestamp": ts_str,
+                "created_at": ts_str,
                 "model": r.model,
+                "model_or_voice": r.model,
+                "voice": meta.get("voice", ""),
                 "language": r.language,
                 "format": r.format,
                 "duration_sec": r.duration_sec,
@@ -828,6 +938,7 @@ def get_recent_history(
                 "input_preview": r.input_preview,
                 "output_preview": r.output_preview,
                 "audio_filename": r.audio_filename,
+                "audio_url": f"/api/audio/{r.audio_filename}" if r.audio_filename else None,
                 "metadata": meta,
             })
         return results
@@ -853,6 +964,36 @@ def clear_history(db_url: str | None = None) -> int:
         session.close()
 
 
+def delete_history_item(history_id: int, db_url: str | None = None) -> bool:
+    """Deletes an individual history entry and any attached unreferenced audio asset."""
+    session = _get_db_session(db_url)
+    try:
+        rec = session.query(AudioHistoryRecord).filter_by(id=history_id).first()
+        if not rec:
+            return False
+        if rec.session_id:
+            delete_recording_session(rec.session_id, db_url=db_url)
+        else:
+            if rec.audio_filename:
+                rec_dir, tts_dir = get_storage_dirs()
+                for d in (rec_dir, tts_dir):
+                    f = d / rec.audio_filename
+                    if f.exists():
+                        try:
+                            f.unlink()
+                        except Exception:
+                            pass
+            session.delete(rec)
+            session.commit()
+        return True
+    except Exception as exc:
+        session.rollback()
+        logger.error("Failed to delete history item %s: %s", history_id, exc)
+        return False
+    finally:
+        session.close()
+
+
 def cleanup_old_temp_audio(temp_dir: Path, max_age_hours: int = 24) -> int:
     """Deletes temporary audio files older than max_age_hours."""
     if not temp_dir.exists():
@@ -868,3 +1009,63 @@ def cleanup_old_temp_audio(temp_dir: Path, max_age_hours: int = 24) -> int:
         except Exception:
             pass
     return count
+
+
+def cleanup_storage_assets(
+    data_dir: Path | None = None,
+    max_age_hours: int = 24,
+    prune_temp_only: bool = False,
+    db_url: str | None = None,
+) -> dict[str, Any]:
+    """Prunes expired temporary files and unreferenced audio assets.
+
+    Maintains database integrity while reclaiming disk storage.
+    """
+    data_dir = _resolve_data_dir(data_dir)
+
+    temp_dir = data_dir / "temp"
+    rec_dir = data_dir / "recordings"
+    tts_dir = data_dir / "tts_audio"
+
+    cleaned_temp = cleanup_old_temp_audio(temp_dir, max_age_hours=max_age_hours)
+    cleaned_assets = 0
+    freed_bytes = 0
+
+    if not prune_temp_only and db_url is None:
+        # Check for unreferenced files in recordings and tts_audio
+        session = _get_db_session(db_url)
+        try:
+            active_filenames = set(
+                row[0] for row in session.query(AudioAsset.filename).filter(AudioAsset.storage_status == "persisted").all()
+            )
+            now = time.time()
+            cutoff = now - (max_age_hours * 3600)
+
+            for target_dir in [rec_dir, tts_dir]:
+                if not target_dir.exists():
+                    continue
+                for wav_path in target_dir.glob("*.wav"):
+                    try:
+                        # Only clean if older than cutoff AND not in active DB filenames
+                        if wav_path.stat().st_mtime < cutoff and wav_path.name not in active_filenames:
+                            f_size = wav_path.stat().st_size
+                            wav_path.unlink()
+                            cleaned_assets += 1
+                            freed_bytes += f_size
+                    except Exception:
+                        pass
+        except Exception as exc:
+            logger.warning("Asset cleanup scan warning: %s", exc)
+        finally:
+            session.close()
+
+    return {
+        "status": "success",
+        "cleaned_temp_files": cleaned_temp,
+        "cleaned_asset_files": cleaned_assets,
+        "total_files_removed": cleaned_temp + cleaned_assets,
+        "freed_bytes": freed_bytes,
+        "freed_mb": round(freed_bytes / (1024 * 1024), 3),
+        "retention_hours": max_age_hours,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }

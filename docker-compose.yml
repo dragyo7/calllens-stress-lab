@@ -1,0 +1,17 @@
+services:
+  calllens:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: calllens-app
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - DATA_DIR=/app/data
+      - ALLOW_LIVE_API=0
+      - ALLOWED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

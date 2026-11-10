@@ -122,6 +122,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewId === 'followup-desk') {
       initFollowupDesk();
     }
+    if (viewId === 'diagnostics') {
+      loadStorageDiagnostics();
+    }
   };
 
   // Sidebar navigation click listeners
@@ -481,10 +484,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
           }
           const file = sttFileInput.files[0];
-          const arrayBuf = await file.arrayBuffer();
-          payload.audio_base64 = btoa(
-            new Uint8Array(arrayBuf).reduce((d, byte) => d + String.fromCharCode(byte), '')
-          );
+          payload.audio_base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.substring(reader.result.indexOf(',') + 1));
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
         } else if (currentSttMode === 'mic') {
           if (!sttRecordedBlob) {
             window.showToast('Please record audio first before transcribing.', 'error');
@@ -492,10 +497,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sttLoader) sttLoader.classList.add('hidden');
             return;
           }
-          const arrayBuf = await sttRecordedBlob.arrayBuffer();
-          payload.audio_base64 = btoa(
-            new Uint8Array(arrayBuf).reduce((d, byte) => d + String.fromCharCode(byte), '')
-          );
+          payload.audio_base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.substring(reader.result.indexOf(',') + 1));
+            reader.onerror = reject;
+            reader.readAsDataURL(sttRecordedBlob);
+          });
         } else if (currentSttMode === 'clip') {
           const clipId = document.getElementById('stt-clip-select')?.value;
           if (!clipId) {
@@ -523,12 +530,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Display output
         if (sttOutputCard) sttOutputCard.classList.remove('hidden');
         if (sttOutputText) sttOutputText.textContent = data.transcript || '(No speech detected)';
-        if (sttOutputMeta) sttOutputMeta.textContent = `${data.model} • ${data.lang} • Format: ${data.format}`;
+        const sttLang = data.lang || data.language_code || 'hi-IN';
+        if (sttOutputMeta) sttOutputMeta.textContent = `${data.model} • ${sttLang} • Format: ${data.format}`;
+
+        const durSec = typeof data.audio_duration_sec === 'number' ? data.audio_duration_sec : (typeof data.duration_sec === 'number' ? data.duration_sec : 0);
+        const latSec = typeof data.latency_sec === 'number' ? data.latency_sec : 0;
+        const wordCount = data.word_count !== undefined ? data.word_count : 0;
 
         document.getElementById('stt-stat-model').textContent = data.model;
-        document.getElementById('stt-stat-lat').textContent = `${data.latency_sec.toFixed(3)}s`;
-        document.getElementById('stt-stat-words').textContent = data.word_count;
-        document.getElementById('stt-stat-dur').textContent = `${data.audio_duration_sec.toFixed(2)}s`;
+        document.getElementById('stt-stat-lat').textContent = `${latSec.toFixed(3)}s`;
+        document.getElementById('stt-stat-words').textContent = wordCount;
+        document.getElementById('stt-stat-dur').textContent = `${durSec.toFixed(2)}s`;
 
         if (sttBtnDownloadTxt) {
           sttBtnDownloadTxt.onclick = () => {
@@ -608,9 +620,13 @@ document.addEventListener('DOMContentLoaded', () => {
         voiceSelect.innerHTML = '';
         data.voices.forEach(v => {
           const opt = document.createElement('option');
-          opt.value = v.voice;
-          opt.textContent = `${v.voice} (${v.gender} • ${v.lang} ${v.is_recommended ? '• Recommended' : ''})`;
-          if (v.voice === 'Pranav') opt.selected = true;
+          const voiceName = v.voice || v.name || v.id || 'Pranav';
+          const gender = v.gender || 'Unknown';
+          const lang = v.lang || v.language || 'Indic';
+          const isRec = v.is_recommended || v.recommended;
+          opt.value = voiceName;
+          opt.textContent = `${voiceName} (${gender} • ${lang}${isRec ? ' • Recommended' : ''})`;
+          if (voiceName === 'Pranav') opt.selected = true;
           voiceSelect.appendChild(opt);
         });
       }
@@ -658,10 +674,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         if (ttsOutputCard) ttsOutputCard.classList.remove('hidden');
 
-        document.getElementById('tts-stat-voice').textContent = data.voice;
-        document.getElementById('tts-stat-dur').textContent = `${data.audio_duration_sec.toFixed(2)}s`;
-        document.getElementById('tts-stat-lat').textContent = `${data.latency_sec.toFixed(3)}s`;
-        document.getElementById('tts-stat-chars').textContent = data.character_count;
+        const durSec = typeof data.audio_duration_sec === 'number' ? data.audio_duration_sec : (typeof data.duration_sec === 'number' ? data.duration_sec : 0);
+        const charCount = data.character_count !== undefined ? data.character_count : (data.char_count !== undefined ? data.char_count : 0);
+        const latSec = typeof data.latency_sec === 'number' ? data.latency_sec : 0;
+
+        document.getElementById('tts-stat-voice').textContent = data.voice || voice;
+        document.getElementById('tts-stat-dur').textContent = `${durSec.toFixed(2)}s`;
+        document.getElementById('tts-stat-lat').textContent = `${latSec.toFixed(3)}s`;
+        document.getElementById('tts-stat-chars').textContent = charCount;
 
         if (ttsAudioPlayer) {
           ttsAudioPlayer.src = data.audio_url;
@@ -732,6 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       speechSocket = new WebSocket(wsUrl);
+      window.speechSocket = speechSocket;
 
       speechSocket.onopen = () => {
         if (wsStatusBadge) {
@@ -752,6 +773,11 @@ document.addEventListener('DOMContentLoaded', () => {
             appendTerminalLog(`Engine configured: ${data.model} (${data.lang})`, '#cbd5e1');
           } else if (evType === 'audio_chunk_received') {
             if (liveBufferBytes) liveBufferBytes.textContent = `${Math.round(data.total_bytes / 1024)} KB`;
+          } else if (evType === 'transcript_partial') {
+            appendTerminalLog(`[Interim Hypothesis] "${data.transcript}" (${data.audio_seconds}s)`, '#94a3b8');
+            if (liveTranscriptBox) {
+              liveTranscriptBox.innerHTML = `<span style="color: #94a3b8; font-style: italic;">${data.transcript} <span style="display:inline-block; animation: pulse 1s infinite; color: #38bdf8;">●</span></span>`;
+            }
           } else if (evType === 'transcription_started') {
             appendTerminalLog(`Transcribing buffered audio (${(data.bytes / 1024).toFixed(1)} KB)...`, '#f59e0b');
           } else if (evType === 'transcription_completed') {
@@ -770,8 +796,9 @@ document.addEventListener('DOMContentLoaded', () => {
               liveAudioPlayer.play().catch(() => {});
             }
           } else if (evType === 'operation_failed') {
-            appendTerminalLog(`Error: ${data.detail}`, '#f43f5e');
-            window.showToast(`Live gateway error: ${data.detail}`, 'error');
+            const errMsg = data.error || data.detail || data.error_code || 'Operation failed';
+            appendTerminalLog(`Error: ${errMsg}`, '#f43f5e');
+            window.showToast(`Live gateway error: ${errMsg}`, 'error');
           }
         } catch (err) {
           appendTerminalLog(`Message: ${event.data}`);
@@ -812,7 +839,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Signal stop to backend over WebSocket
         if (speechSocket && speechSocket.readyState === WebSocket.OPEN) {
-          speechSocket.send(JSON.stringify({ type: 'stop' }));
+          speechSocket.send(JSON.stringify({ action: 'finish_recording', type: 'stop' }));
           appendTerminalLog('Stop signal sent. Awaiting atomic transcription...', '#38bdf8');
         }
       } else {
@@ -883,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/history?limit=50');
       if (!res.ok) return;
       const data = await res.json();
-      const records = data.records || [];
+      const records = data.records || data.history || [];
 
       if (kpiHistoryCount) {
         kpiHistoryCount.textContent = data.total_count !== undefined ? data.total_count : records.length;
@@ -891,7 +918,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!historyTableBody) return;
       if (records.length === 0) {
-        historyTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">No history records found yet. Run an STT or TTS operation to see entries here.</td></tr>';
+        historyTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">No history records found yet. Run an STT or TTS operation to see entries here.</td></tr>';
         return;
       }
 
@@ -899,21 +926,69 @@ document.addEventListener('DOMContentLoaded', () => {
       records.forEach(rec => {
         const tr = document.createElement('tr');
         const isStt = rec.kind === 'stt';
-        const badgeClass = isStt ? 'badge-blue' : 'badge-cyan';
-        const timeFormatted = rec.created_at ? rec.created_at.replace('T', ' ').substring(0, 19) : '-';
+        const badgeClass = isStt ? 'badge-blue' : (rec.kind === 'followup' ? 'badge-indigo' : 'badge-cyan');
+        const timeFormatted = (rec.timestamp || rec.created_at || '').replace('T', ' ').substring(0, 19) || '-';
+        const modelDisplay = rec.model_or_voice || rec.model || rec.voice || '-';
+        const latencyText = (typeof rec.latency_sec === 'number') ? `${rec.latency_sec.toFixed(3)}s` : '-';
+        const audioUrl = rec.audio_url || (rec.audio_filename ? `/api/audio/${encodeURIComponent(rec.audio_filename)}` : null);
 
         tr.innerHTML = `
           <td class="font-mono">#${rec.id}</td>
           <td><span class="status-pill ${badgeClass}" style="text-transform: uppercase; font-size: 0.72rem; padding: 2px 8px;">${rec.kind}</span></td>
           <td class="font-mono" style="font-size: 0.78rem;">${timeFormatted}</td>
-          <td><strong>${rec.model_or_voice}</strong></td>
-          <td class="font-mono">${rec.language}</td>
-          <td class="font-mono">${rec.latency_sec.toFixed(3)}s</td>
-          <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rec.input_preview}">${rec.input_preview}</td>
-          <td style="max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rec.output_preview}">${rec.output_preview}</td>
-          <td><span class="badge-lead-v25">&check; ${rec.status}</span></td>
+          <td><strong>${modelDisplay}</strong></td>
+          <td class="font-mono">${rec.language || '-'}</td>
+          <td class="font-mono">${latencyText}</td>
+          <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rec.input_preview || ''}">${rec.input_preview || '-'}</td>
+          <td style="max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rec.output_preview || ''}">${rec.output_preview || '-'}</td>
+          <td><span class="badge-lead-v25">&check; ${rec.status || 'completed'}</span></td>
+          <td style="white-space: nowrap;">
+            ${audioUrl ? `<button class="btn btn-sm btn-secondary history-play-btn" data-audio="${audioUrl}" style="padding: 2px 8px; font-size: 0.75rem;">▶ Play</button>` : '<span class="text-muted" style="font-size: 0.75rem;">No audio</span>'}
+            <button class="btn btn-sm btn-ghost history-delete-btn" data-id="${rec.id}" title="Delete record" style="padding: 2px 6px; font-size: 0.75rem; color: #ef4444; margin-left: 4px;">✕</button>
+          </td>
         `;
         historyTableBody.appendChild(tr);
+      });
+
+      // Bind audio playback buttons
+      historyTableBody.querySelectorAll('.history-play-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const url = btn.getAttribute('data-audio');
+          if (url) {
+            let p = document.getElementById('history-global-audio');
+            if (!p) {
+              p = document.createElement('audio');
+              p.id = 'history-global-audio';
+              p.style.display = 'none';
+              document.body.appendChild(p);
+            }
+            p.src = url;
+            p.play().then(() => {
+              window.showToast('Playing recording...', 'info');
+            }).catch(err => {
+              window.showToast('Audio playback failed: ' + err.message, 'error');
+            });
+          }
+        });
+      });
+
+      // Bind delete recording buttons
+      historyTableBody.querySelectorAll('.history-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          if (!id) return;
+          try {
+            const res = await fetch(`/api/history/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              window.showToast('Record deleted successfully', 'info');
+              loadHistory();
+            } else {
+              window.showToast('Failed to delete record', 'error');
+            }
+          } catch (err) {
+            window.showToast('Delete error: ' + err.message, 'error');
+          }
+        });
       });
     } catch (err) {
       console.warn('Failed to load history:', err);
@@ -1317,6 +1392,30 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRefreshStorage.addEventListener('click', loadStorageDiagnostics);
   }
 
+  const btnCleanupStorage = document.getElementById('btn-cleanup-storage');
+  if (btnCleanupStorage) {
+    btnCleanupStorage.addEventListener('click', async () => {
+      try {
+        btnCleanupStorage.disabled = true;
+        btnCleanupStorage.textContent = 'Cleaning...';
+        const res = await fetch('/api/storage/cleanup', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          window.showToast(`Storage cleanup complete: ${data.total_files_removed} files removed (${data.freed_mb} MB freed).`, 'success');
+          loadStorageDiagnostics();
+        } else {
+          window.showToast('Storage cleanup completed.', 'info');
+        }
+      } catch (err) {
+        console.error('Storage cleanup failed:', err);
+        window.showToast('Failed to execute storage cleanup.', 'error');
+      } finally {
+        btnCleanupStorage.disabled = false;
+        btnCleanupStorage.innerHTML = '<svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg> Run Storage Cleanup';
+      }
+    });
+  }
+
   // Render Diagnostics View
   function renderDiagnosticsView(data) {
     loadStorageDiagnostics();
@@ -1430,10 +1529,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (loader) loader.classList.remove('hidden');
 
       try {
+        const chkDenoise = document.getElementById('chk-denoise');
         let payload = {
           clip_id: clipId || null,
           condition: condition,
           live: 0,
+          denoise: chkDenoise ? chkDenoise.checked : false,
         };
 
         if (audioFileInput.files && audioFileInput.files.length > 0) {
@@ -1568,6 +1669,28 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Denoised Audio Result Card
+    const cardDenoised = document.getElementById('card-denoised');
+    const denoisedPlayer = document.getElementById('denoised-audio-player');
+    const denoisedTranscript = document.getElementById('denoised-transcript');
+    const denoisedWer = document.getElementById('denoised-wer');
+
+    if (data.denoise && data.denoise.applied && cardDenoised) {
+      cardDenoised.classList.remove('hidden');
+      if (denoisedPlayer && data.denoise.denoised_audio_url) {
+        denoisedPlayer.src = data.denoise.denoised_audio_url;
+        denoisedPlayer.load();
+      }
+      if (denoisedTranscript) {
+        denoisedTranscript.textContent = data.denoise.transcript || '(empty / no speech detected)';
+      }
+      if (denoisedWer) {
+        denoisedWer.textContent = data.denoise.wer !== null ? `${(data.denoise.wer * 100).toFixed(1)}%` : 'N/A';
+      }
+    } else if (cardDenoised) {
+      cardDenoised.classList.add('hidden');
+    }
+
     resultsSection.classList.remove('hidden');
     resultsSection.scrollIntoView({ behavior: 'smooth' });
     window.showToast('Evaluation replayed from verified live benchmark', 'success');
@@ -1649,6 +1772,43 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.warn('Could not fetch followup scenarios:', err);
     }
+
+    // Load historical records from persistent database
+    async function loadFollowupHistory() {
+      if (!historyTbody) return;
+      try {
+        const res = await fetch('/api/followup/records?limit=25');
+        if (!res.ok) return;
+        const data = await res.json();
+        const records = data.records || [];
+        if (records.length === 0) return;
+
+        historyTbody.innerHTML = '';
+        records.forEach(r => {
+          const tr = document.createElement('tr');
+          const amtDisplay = (r.amount !== null && r.amount !== undefined)
+            ? `₹${Number(r.amount).toLocaleString('en-IN')}`
+            : '<span class="text-amber">Not set</span>';
+          const audioBtn = r.audio_url
+            ? `<button type="button" class="btn btn-ghost btn-sm" onclick="window.playFlwAudio('${r.audio_url}')">▶ Play</button>`
+            : '<span class="text-muted text-sm">Archived</span>';
+
+          tr.innerHTML = `
+            <td class="font-mono text-sm">${escapeHtml(r.confirmed_at ? r.confirmed_at.slice(0, 19) : '-')}</td>
+            <td><strong>${escapeHtml(r.customer_name || 'Customer')}</strong></td>
+            <td class="font-mono text-cyan">${amtDisplay}</td>
+            <td><span class="badge-subtle">${escapeHtml(r.ptp_date || '-')}</span></td>
+            <td>${escapeHtml(r.concern || 'General')}</td>
+            <td><span class="field-badge-confirmed">Operator Verified</span></td>
+            <td>${audioBtn}</td>
+          `;
+          historyTbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.warn('Could not load followup history:', err);
+      }
+    }
+    loadFollowupHistory();
 
     // Scenario chip listeners
     document.querySelectorAll('#flw-scenario-chips .scenario-chip').forEach(chip => {
@@ -1815,7 +1975,7 @@ document.addEventListener('DOMContentLoaded', () => {
             concern: concernSelect ? concernSelect.value : null,
             summary: summaryText ? summaryText.value.trim() : 'Confirmed follow-up summary',
             reminder_text: reminderText ? reminderText.value.trim() : 'Payment reminder notice',
-            voice: voiceSelect ? voiceSelect.value : 'pranav',
+            voice: voiceSelect ? voiceSelect.value : 'Pranav',
             language: 'hi-IN',
             operator_notes: operatorNotes ? operatorNotes.value.trim() : null
           };

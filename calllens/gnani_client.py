@@ -292,7 +292,8 @@ def compute_cache_key(kind: Literal["stt", "tts"], payload: dict[str, Any]) -> s
 
     elif kind == "tts":
         hasher.update(str(payload.get("text", "")).encode("utf-8"))
-        hasher.update(str(payload.get("voice", "Pranav")).encode("utf-8"))
+        voice_str = str(payload.get("voice", "Pranav")).strip().capitalize()
+        hasher.update(voice_str.encode("utf-8"))
         hasher.update(str(payload.get("model", "timbre-v2.5")).encode("utf-8"))
         hasher.update(str(payload.get("language", "hi-IN")).encode("utf-8"))
         hasher.update(str(payload.get("speed", 1.0)).encode("utf-8"))
@@ -482,10 +483,11 @@ def call(
                     return res
 
                 elif kind == "tts":
+                    voice_val = str(payload.get("voice", "Pranav")).strip().capitalize()
                     client = GnaniTTSClient(api_key=api_key, timeout=timeout)
                     res_bytes = client.synthesize(
                         text=payload["text"],
-                        voice=payload.get("voice", "Pranav"),
+                        voice=voice_val,
                         model=payload.get("model", "timbre-v2.5"),
                         language=payload.get("language", "hi-IN"),
                         speed=payload.get("speed", 1.0),

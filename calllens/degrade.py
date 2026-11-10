@@ -212,3 +212,52 @@ def process_audio_file(
     # Write as standard 16kHz mono PCM16 WAV
     sf.write(str(output_path), degraded, sr, subtype="PCM_16")
     return output_path
+
+
+def suppress_noise(
+    audio: np.ndarray,
+    sr: int = 16000,
+    alpha: float = 1.8,
+    beta: float = 0.05,
+) -> np.ndarray:
+    """Applies frequency-domain spectral subtraction noise suppression to an audio signal.
+
+    Parameters:
+    - audio: 1D NumPy array representing audio samples.
+    - sr: Sample rate (default 16000 Hz).
+    - alpha: Over-subtraction factor (controls aggressiveness of noise reduction).
+    - beta: Spectral floor coefficient (prevents negative spectral power and musical noise).
+
+    Returns:
+    - Cleaned 1D float32 audio array bounded to [-1.0, 1.0].
+    """
+    if audio.ndim > 1:
+        audio = np.mean(audio, axis=-1)
+
+    if len(audio) < 512:
+        return audio.astype(np.float32)
+
+    # 512-point STFT with 75% overlap for fine temporal/spectral resolution
+    f, times, Zxx = signal.stft(audio, fs=sr, nperseg=512, noverlap=384)
+    mag = np.abs(Zxx)
+    phase = np.angle(Zxx)
+
+    # Estimate noise spectrum from the lowest 10% energy frames (stationary background noise floor)
+    frame_energy = np.mean(mag ** 2, axis=0)
+    k_frames = max(1, len(frame_energy) // 10)
+    noise_frames = np.argsort(frame_energy)[:k_frames]
+    noise_profile = np.mean(mag[:, noise_frames], axis=1, keepdims=True)
+
+    # Spectral subtraction with spectral floor
+    clean_mag = np.maximum(mag - alpha * noise_profile, beta * mag)
+    Zxx_clean = clean_mag * np.exp(1j * phase)
+
+    _, cleaned = signal.istft(Zxx_clean, fs=sr, nperseg=512, noverlap=384)
+
+    # Align length to match input array exactly
+    if len(cleaned) > len(audio):
+        cleaned = cleaned[:len(audio)]
+    elif len(cleaned) < len(audio):
+        cleaned = np.pad(cleaned, (0, len(audio) - len(cleaned)))
+
+    return np.clip(cleaned, -1.0, 1.0).astype(np.float32)
